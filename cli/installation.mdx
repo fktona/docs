@@ -1,0 +1,67 @@
+---
+title: "Installation"
+description: "Install and set up the Vela CLI"
+---
+
+## Install
+
+<CodeGroup>
+
+```bash npm (global)
+npm install -g @vela/cli
+```
+
+```bash npx (no install)
+npx @vela/cli <command>
+```
+
+</CodeGroup>
+
+## Requirements
+
+- **Node.js 18+**
+
+## Set up
+
+### 1. Create a config file
+
+Create `vela.config.json` in your project root:
+
+```json
+{
+  "app": "my-app-slug"
+}
+```
+
+### 2. Set your client secret
+
+```bash
+export VELA_CLIENT_SECRET="vela_cs_..."
+```
+
+### 3. Create your schemas directory
+
+```bash
+mkdir -p vela/schemas
+```
+
+### 4. Verify
+
+```bash
+vela --help
+```
+
+```
+Usage: vela <command> [options]
+
+Commands:
+  push    Sync local schema files to the remote Vela API
+  pull    Download remote schemas to local JSON files
+  diff    Show pending changes without pushing
+
+Options:
+  --app <slug>    App slug or ID (overrides vela.config.json)
+  --dir <path>    Schemas directory (overrides vela.config.json)
+  --help          Show this help message
+  --version       Show version
+```

@@ -1,33 +1,68 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: "API Reference"
+description: "Vela HTTP API documentation"
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+## Base URL
 
-## Welcome
+```
+https://api.vela.dev/v1
+```
 
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+For local development:
 
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+```
+http://localhost:3000/v1
+```
 
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+The API uses two authentication methods:
+
+| Method | Header | Used for |
+|--------|--------|----------|
+| Client secret | `Authorization: Bearer vela_cs_...` | Management endpoints (apps, schemas, rules) |
+| API key | `x-api-key: vela_live_...` | Event ingestion |
+
+See [Authentication](/api-reference/authentication) for details.
+
+## Content type
+
+All requests and responses use JSON:
+
+```
+Content-Type: application/json
+```
+
+## Error format
+
+All errors return a consistent shape:
 
 ```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
+{
+  "statusCode": 400,
+  "timestamp": "2024-06-01T12:00:00.000Z",
+  "path": "/v1/apps",
+  "error": "Bad Request",
+  "message": "name must be a string"
+}
 ```
+
+| Status | Description |
+|--------|-------------|
+| `400` | Validation error -- check your request body |
+| `401` | Unauthorized -- missing or invalid credentials |
+| `403` | Forbidden -- valid credentials but insufficient permissions |
+| `404` | Not found |
+| `429` | Rate limited -- back off and retry |
+| `500` | Internal server error |
+
+## Endpoints overview
+
+| Group | Base path | Auth |
+|-------|-----------|------|
+| [Apps](/api-reference/apps/list) | `/v1/apps` | Client secret |
+| [Schemas](/api-reference/schemas/list) | `/v1/apps/:appId/schemas` | Client secret |
+| [Events](/api-reference/events/ingest) | `/v1/ingest` | API key |
+| [Events (read)](/api-reference/events/list) | `/v1/apps/:appId/events` | Client secret |
+| [Notification Rules](/api-reference/notification-rules/list) | `/v1/apps/:appId/notification-rules` | Client secret |

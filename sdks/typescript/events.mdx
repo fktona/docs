@@ -1,0 +1,49 @@
+---
+title: "Events (Read)"
+description: "Query and paginate through ingested events"
+---
+
+List and filter events that have been ingested into an app.
+
+<Note>
+  To **send** events, use the [Ingest Client](/sdks/typescript/ingest-client). This page covers **reading** events.
+</Note>
+
+## List events
+
+```typescript
+const { items, nextCursor } = await appRes.events.list();
+```
+
+## With filters
+
+```typescript
+const { items, nextCursor } = await appRes.events.list({
+  level: 'error',
+  type: 'payment.failed',
+  from: '2024-06-01T00:00:00.000Z',
+  to: '2024-06-30T23:59:59.999Z',
+  limit: 50,
+});
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `level` | `EventLevel` | Filter by severity (`info`, `warning`, `error`, `success`) |
+| `type` | `string` | Filter by event name |
+| `from` | `string` | Start of time range (ISO-8601) |
+| `to` | `string` | End of time range (ISO-8601) |
+| `limit` | `number` | Results per page (default 25, max 100) |
+| `cursor` | `string` | Pagination cursor from previous response |
+
+## Cursor pagination
+
+```typescript
+let cursor: string | null | undefined;
+
+do {
+  const page = await appRes.events.list({ limit: 100, cursor });
+  processBatch(page.items);
+  cursor = page.nextCursor;
+} while (cursor);
+```

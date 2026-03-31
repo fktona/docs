@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" fill="none">
+  <rect width="800" height="400" rx="12" fill="#fafaf9"/>
+
+  <!-- Your App -->
+  <rect x="40" y="150" width="140" height="80" rx="8" fill="#18181b"/>
+  <text x="110" y="195" text-anchor="middle" fill="#fafaf9" font-family="system-ui" font-size="14" font-weight="600">Your App</text>
+
+  <!-- Arrow 1 -->
+  <line x1="180" y1="190" x2="260" y2="190" stroke="#a78bfa" stroke-width="2" stroke-dasharray="6,4"/>
+  <polygon points="258,184 270,190 258,196" fill="#a78bfa"/>
+  <text x="220" y="178" text-anchor="middle" fill="#71717a" font-family="system-ui" font-size="11">SDK</text>
+
+  <!-- Vela API -->
+  <rect x="270" y="130" width="160" height="120" rx="8" fill="#a78bfa"/>
+  <text x="350" y="175" text-anchor="middle" fill="#fff" font-family="system-ui" font-size="16" font-weight="700">Vela API</text>
+  <text x="350" y="198" text-anchor="middle" fill="#ede9fe" font-family="system-ui" font-size="11">Ingest &amp; Manage</text>
+  <text x="350" y="215" text-anchor="middle" fill="#ede9fe" font-family="system-ui" font-size="11">Schemas &amp; Rules</text>
+
+  <!-- Arrow 2 -->
+  <line x1="430" y1="170" x2="510" y2="170" stroke="#a78bfa" stroke-width="2" stroke-dasharray="6,4"/>
+  <polygon points="508,164 520,170 508,176" fill="#a78bfa"/>
+  <text x="470" y="158" text-anchor="middle" fill="#71717a" font-family="system-ui" font-size="11">Store</text>
+
+  <!-- Database -->
+  <rect x="520" y="140" width="120" height="60" rx="8" fill="#18181b"/>
+  <text x="580" y="175" text-anchor="middle" fill="#fafaf9" font-family="system-ui" font-size="13" font-weight="600">PostgreSQL</text>
+
+  <!-- Arrow 3: down from API -->
+  <line x1="350" y1="250" x2="350" y2="290" stroke="#a78bfa" stroke-width="2" stroke-dasharray="6,4"/>
+  <polygon points="344,288 350,300 356,288" fill="#a78bfa"/>
+  <text x="375" y="275" text-anchor="start" fill="#71717a" font-family="system-ui" font-size="11">Evaluate</text>
+
+  <!-- Rule Engine -->
+  <rect x="280" y="300" width="140" height="60" rx="8" fill="#7c3aed"/>
+  <text x="350" y="335" text-anchor="middle" fill="#fff" font-family="system-ui" font-size="13" font-weight="600">Rule Engine</text>
+
+  <!-- Arrow 4: right from rules -->
+  <line x1="420" y1="330" x2="510" y2="330" stroke="#a78bfa" stroke-width="2" stroke-dasharray="6,4"/>
+  <polygon points="508,324 520,330 508,336" fill="#a78bfa"/>
+  <text x="465" y="318" text-anchor="middle" fill="#71717a" font-family="system-ui" font-size="11">Notify</text>
+
+  <!-- Destinations -->
+  <rect x="520" y="295" width="120" height="70" rx="8" fill="#18181b"/>
+  <text x="580" y="325" text-anchor="middle" fill="#fafaf9" font-family="system-ui" font-size="13" font-weight="600">Destinations</text>
+  <text x="580" y="345" text-anchor="middle" fill="#71717a" font-family="system-ui" font-size="11">Slack / Email / Discord</text>
+
+  <!-- Arrow from API up to Queue -->
+  <line x1="430" y1="210" x2="510" y2="250" stroke="#a78bfa" stroke-width="2" stroke-dasharray="6,4"/>
+  <polygon points="506,244 520,250 510,256" fill="#a78bfa"/>
+
+  <!-- Queue -->
+  <rect x="520" y="230" width="120" height="50" rx="8" fill="#18181b"/>
+  <text x="580" y="260" text-anchor="middle" fill="#fafaf9" font-family="system-ui" font-size="13" font-weight="600">RabbitMQ</text>
+</svg>

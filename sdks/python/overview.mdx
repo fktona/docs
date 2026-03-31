@@ -1,0 +1,54 @@
+---
+title: "Python SDK"
+description: "Official Python SDK for the Vela platform"
+---
+
+The `vela-sdk` package provides sync and async clients for the Vela API using [httpx](https://www.python-httpx.org/).
+
+## Features
+
+- **Sync + Async** -- identical API surface for both modes
+- **Context manager support** -- `with` and `async with` for clean resource management
+- **Type hints** -- TypedDict inputs, dataclass responses
+- **Single dependency** -- only `httpx`
+
+## Two clients
+
+| Client | Auth | Purpose |
+|--------|------|---------|
+| `VelaIngestClient` / `AsyncVelaIngestClient` | API key (`vela_live_...`) | Send events |
+| `VelaManagementClient` / `AsyncVelaManagementClient` | Client secret (`vela_cs_...`) | Manage apps, schemas, rules |
+
+```python
+from vela import VelaIngestClient, VelaManagementClient
+
+# Ingest events
+with VelaIngestClient(os.environ["VELA_API_KEY"]) as ingest:
+    ingest.ingest({"event": "order.placed", "data": {"orderId": "ord_1"}, "level": "info"})
+
+# Manage resources
+with VelaManagementClient(os.environ["VELA_CLIENT_SECRET"]) as client:
+    apps = client.apps.list()
+```
+
+## Quick links
+
+<CardGroup cols={2}>
+
+<Card title="Installation" icon="download" href="/sdks/python/installation">
+  Install and set up the SDK.
+</Card>
+
+<Card title="Ingest Client" icon="bolt" href="/sdks/python/ingest-client">
+  Send single and batch events.
+</Card>
+
+<Card title="Management Client" icon="gear" href="/sdks/python/management-client">
+  Manage apps, schemas, and rules.
+</Card>
+
+<Card title="Error Handling" icon="triangle-exclamation" href="/sdks/python/error-handling">
+  Handle API errors gracefully.
+</Card>
+
+</CardGroup>

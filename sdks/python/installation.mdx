@@ -1,0 +1,37 @@
+---
+title: "Installation"
+description: "Install the vela-sdk package"
+---
+
+## Install
+
+```bash
+pip install vela-sdk
+```
+
+## Requirements
+
+- **Python 3.9+**
+- Runtime dependency: [httpx](https://www.python-httpx.org/) (installed automatically)
+
+## Set up credentials
+
+```bash
+export VELA_CLIENT_SECRET="vela_cs_..."
+export VELA_API_KEY="vela_live_..."
+```
+
+<Tip>
+  Get both credentials from the [Vela dashboard](https://app.vela.dev). See the [credentials guide](/credentials/overview) for details.
+</Tip>
+
+## Verify the installation
+
+```python
+import os
+from vela import VelaManagementClient
+
+with VelaManagementClient(os.environ["VELA_CLIENT_SECRET"]) as client:
+    apps = client.apps.list()
+    print(f"Connected! Found {len(apps)} app(s).")
+```

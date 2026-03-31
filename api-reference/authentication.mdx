@@ -1,0 +1,42 @@
+---
+title: "Authentication"
+description: "How to authenticate with the Vela API"
+---
+
+## Client secret (Management API)
+
+For managing apps, schemas, and notification rules, pass your client secret as a Bearer token:
+
+```bash
+curl https://api.vela.dev/v1/apps \
+  -H "Authorization: Bearer vela_cs_your_secret_here"
+```
+
+## API key (Event Ingestion)
+
+For ingesting events, pass your app's API key in the `x-api-key` header:
+
+```bash
+curl -X POST https://api.vela.dev/v1/ingest \
+  -H "x-api-key: vela_live_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "order.placed",
+    "data": { "orderId": "ord_1", "amountCents": 4999 },
+    "level": "info"
+  }'
+```
+
+## Error responses
+
+Missing or invalid credentials return `401 Unauthorized`:
+
+```json
+{
+  "statusCode": 401,
+  "timestamp": "2024-06-01T12:00:00.000Z",
+  "path": "/v1/apps",
+  "error": "Unauthorized",
+  "message": "Invalid or missing authentication"
+}
+```

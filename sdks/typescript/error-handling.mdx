@@ -1,0 +1,77 @@
+---
+title: "Error Handling"
+description: "Handle API errors with typed exceptions"
+---
+
+All API errors extend `VelaError` and include structured metadata.
+
+## Error classes
+
+| Error class | HTTP status |
+|-------------|-------------|
+| `VelaValidationError` | 400 |
+| `VelaAuthError` | 401 |
+| `VelaForbiddenError` | 403 |
+| `VelaNotFoundError` | 404 |
+| `VelaRateLimitError` | 429 |
+| `VelaError` (base) | any other 4xx / 5xx |
+
+## Usage
+
+```typescript
+import {
+  VelaError,
+  VelaAuthError,
+  VelaNotFoundError,
+  VelaValidationError,
+  VelaRateLimitError,
+} from '@vela/sdk';
+
+try {
+  await client.apps.get('nonexistent');
+} catch (err) {
+  if (err instanceof VelaNotFoundError) {
+    console.error('App not found');
+  } else if (err instanceof VelaAuthError) {
+    console.error('Invalid or missing client secret');
+  } else if (err instanceof VelaValidationError) {
+    console.error('Validation error:', err.message);
+  } else if (err instanceof VelaRateLimitError) {
+    console.error('Rate limited -- back off and retry');
+  } else if (err instanceof VelaError) {
+    console.error(`API error ${err.statusCode}:`, err.message);
+  } else {
+    throw err; // network error, timeout, etc.
+  }
+}
+```
+
+## Error properties
+
+Every `VelaError` includes:
+
+```typescript
+interface VelaError {
+  message: string;      // Human-readable error message
+  statusCode: number;   // HTTP status code
+  error: string;        // Error type (e.g., "Not Found")
+  path: string;         // Request path that caused the error
+  timestamp: string;    // ISO-8601 timestamp
+}
+```
+
+## Network errors
+
+Network errors (DNS failure, timeout, connection refused) propagate as native `TypeError` or `DOMException` -- not wrapped in `VelaError`. This lets you distinguish transport failures from API errors:
+
+```typescript
+try {
+  await client.apps.list();
+} catch (err) {
+  if (err instanceof VelaError) {
+    // API returned an error response
+  } else {
+    // Network issue -- DNS, timeout, connection refused
+  }
+}
+```

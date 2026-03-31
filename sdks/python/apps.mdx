@@ -1,0 +1,50 @@
+---
+title: "Apps"
+description: "Create and manage Vela apps with Python"
+---
+
+## List apps
+
+```python
+apps = client.apps.list()
+
+for app in apps:
+    print(app.id, app.name, app.slug, app.api_key_prefix)
+```
+
+## Create an app
+
+```python
+result = client.apps.create({"name": "Order Service"})
+print(result.api_key)  # vela_live_xxxx... -- shown only once
+```
+
+Optionally provide a slug:
+
+```python
+result = client.apps.create({"name": "Order Service", "slug": "order-service"})
+```
+
+<Warning>
+  The API key is returned only at creation time. Store it in a secure location immediately.
+</Warning>
+
+## Get an app
+
+```python
+app = client.apps.get("order-service")  # UUID or slug
+```
+
+## Update an app
+
+```python
+updated = client.apps.update("order-service", {"name": "Orders v2"})
+```
+
+## Rotate API key
+
+```python
+result = client.apps.rotate_key("order-service")
+# Old key is immediately revoked
+print(result.api_key)
+```

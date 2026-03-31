@@ -1,0 +1,45 @@
+---
+title: "vela pull"
+description: "Download remote schemas to local JSON files"
+---
+
+Downloads all schemas from the Vela API and writes them as local JSON files. Server-only fields (`id`, `appId`, `createdAt`, `updatedAt`) are stripped.
+
+## Usage
+
+```bash
+vela pull
+```
+
+## Example output
+
+```
+✓ Pulled order.placed
+✓ Pulled payment.failed
+
+i Pulled 2 schema(s) to ./vela/schemas
+```
+
+## What happens
+
+1. Fetches all schemas from the Vela API for your app
+2. Writes each schema to `{schemasDir}/{eventName}.json`
+3. Strips server-only fields so the file matches the expected local format
+4. Creates the schemas directory if it doesn't exist
+
+## Options
+
+```bash
+vela pull --app production-app --dir ./schemas/prod
+```
+
+| Flag | Description |
+|------|-------------|
+| `--app <slug>` | Override the app from `vela.config.json` |
+| `--dir <path>` | Override the schemas directory |
+
+## Use cases
+
+- **Initial setup** -- pull existing schemas when adopting the CLI for the first time
+- **Sync after dashboard edits** -- if someone modifies schemas in the dashboard, pull to keep local files in sync
+- **Backup** -- periodically pull schemas as a safety net

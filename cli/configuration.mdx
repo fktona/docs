@@ -1,0 +1,55 @@
+---
+title: "Configuration"
+description: "Configure the Vela CLI"
+---
+
+## Config file
+
+Create `vela.config.json` in your project root:
+
+```json
+{
+  "app": "my-app-slug",
+  "schemasDir": "./vela/schemas"
+}
+```
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `app` | yes | -- | App slug or UUID |
+| `schemasDir` | no | `./vela/schemas` | Directory containing schema JSON files |
+| `clientSecret` | no | -- | Client secret. Prefer the env var instead |
+
+## Authentication
+
+The `VELA_CLIENT_SECRET` environment variable takes precedence over the config file:
+
+```bash
+export VELA_CLIENT_SECRET="vela_cs_..."
+```
+
+<Warning>
+  Do not commit secrets to `vela.config.json`. Use environment variables or your CI's secret store.
+</Warning>
+
+## CLI flags
+
+All commands accept flags that override the config file:
+
+| Flag | Description |
+|------|-------------|
+| `--app <slug>` | Override the app slug/UUID |
+| `--dir <path>` | Override the schemas directory path |
+
+```bash
+vela push --app staging-app --dir ./schemas/staging
+```
+
+## Precedence
+
+Settings are resolved in this order (highest wins):
+
+1. CLI flags (`--app`, `--dir`)
+2. Environment variables (`VELA_CLIENT_SECRET`)
+3. `vela.config.json` file
+4. Defaults (`schemasDir: ./vela/schemas`)

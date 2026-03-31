@@ -1,0 +1,59 @@
+---
+title: "vela diff"
+description: "Preview schema changes without pushing"
+---
+
+Shows what would change without making any mutations. Useful for reviewing before pushing and as a CI gate.
+
+## Usage
+
+```bash
+vela diff
+```
+
+## Example output
+
+```
+i Found 3 local schema(s) in ./vela/schemas
+! order.cancelled  → create
+  + field "reason" (string, required)
+  + field "refundCents" (number, optional)
+! order.placed  → update
+  ~ description changed
+  + field "currency" (enum, required)
+✓ user.signup  → no change
+
+i 1 to create, 1 to update, 1 unchanged
+```
+
+## Exit codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | All schemas are in sync |
+| `1` | There are pending changes |
+
+## CI usage
+
+Use `vela diff` as a gate in your CI pipeline to catch schema drift:
+
+```bash
+vela diff || echo "Schemas out of sync -- run 'vela push'"
+```
+
+### GitHub Actions example
+
+```yaml
+- name: Check schema drift
+  run: |
+    npx @vela/cli diff
+  env:
+    VELA_CLIENT_SECRET: ${{ secrets.VELA_CLIENT_SECRET }}
+```
+
+## Options
+
+| Flag | Description |
+|------|-------------|
+| `--app <slug>` | Override the app from `vela.config.json` |
+| `--dir <path>` | Override the schemas directory |

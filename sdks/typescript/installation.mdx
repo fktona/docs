@@ -1,0 +1,52 @@
+---
+title: "Installation"
+description: "Install the @vela/sdk package"
+---
+
+## Install
+
+<CodeGroup>
+
+```bash npm
+npm install @vela/sdk
+```
+
+```bash pnpm
+pnpm add @vela/sdk
+```
+
+```bash yarn
+yarn add @vela/sdk
+```
+
+</CodeGroup>
+
+## Requirements
+
+- **Node.js 18+** (uses native `fetch`)
+- Works in all modern browsers
+- Compatible with edge runtimes (Cloudflare Workers, Vercel Edge, Deno)
+
+## Set up credentials
+
+```bash
+# For management operations (apps, schemas, rules)
+export VELA_CLIENT_SECRET="vela_cs_..."
+
+# For event ingestion
+export VELA_API_KEY="vela_live_..."
+```
+
+<Tip>
+  Get both credentials from the [Vela dashboard](https://app.vela.dev). See the [credentials guide](/credentials/overview) for details.
+</Tip>
+
+## Verify the installation
+
+```typescript
+import { VelaManagementClient } from '@vela/sdk';
+
+const client = new VelaManagementClient(process.env.VELA_CLIENT_SECRET);
+const apps = await client.apps.list();
+console.log(`Connected! Found ${apps.length} app(s).`);
+```

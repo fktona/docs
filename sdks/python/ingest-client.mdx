@@ -1,0 +1,83 @@
+---
+title: "Ingest Client"
+description: "Send events to Vela with VelaIngestClient"
+---
+
+## Sync client
+
+```python
+from vela import VelaIngestClient
+
+with VelaIngestClient("vela_live_xxx") as client:
+    result = client.ingest({
+        "event": "order.placed",
+        "data": {"orderId": "ord_1", "amountCents": 4999},
+        "level": "info",
+    })
+    print(result.accepted)  # 1
+```
+
+## Async client
+
+```python
+from vela import AsyncVelaIngestClient
+
+async with AsyncVelaIngestClient("vela_live_xxx") as client:
+    result = await client.ingest({
+        "event": "order.placed",
+        "data": {"orderId": "ord_1", "amountCents": 4999},
+        "level": "info",
+    })
+```
+
+## Constructor
+
+```python
+VelaIngestClient(
+    api_key: str,
+    *,
+    base_url: str = "https://api.vela.dev",
+    timeout: float = 30.0,
+)
+```
+
+## Single event
+
+```python
+result = client.ingest({
+    "event": "order.placed",       # required -- must match a registered schema
+    "data": {                       # required -- event payload
+        "orderId": "ord_abc123",
+        "amountCents": 4999,
+        "currency": "USD",
+    },
+    "level": "info",                # required
+    "customer_id": "cust_42",       # optional
+    "metadata": {"env": "prod"},    # optional
+    "timestamp": "2024-06-01T12:00:00.000Z",  # optional
+})
+
+print(result.accepted)        # 1
+print(result.events[0].id)    # UUID
+```
+
+## Batch (up to 100 events)
+
+```python
+result = client.ingest([
+    {"event": "order.placed",   "data": {"orderId": "ord_1"}, "level": "info"},
+    {"event": "order.placed",   "data": {"orderId": "ord_2"}, "level": "info"},
+    {"event": "payment.failed", "data": {"orderId": "ord_3", "reason": "card_declined"}, "level": "error"},
+])
+
+print(result.accepted)  # 3
+```
+
+## Event levels
+
+| Level | When to use |
+|-------|-------------|
+| `info` | Normal business events -- order placed, user signed up |
+| `success` | Completed flows -- payment captured, email delivered |
+| `warning` | Degraded but non-critical -- retry #2, slow response |
+| `error` | Failures requiring attention -- payment failed, webhook error |

@@ -1,0 +1,49 @@
+---
+title: "Configuration"
+description: "Configure base URL, timeout, and custom fetch"
+---
+
+Both `VelaIngestClient` and `VelaManagementClient` accept the same options.
+
+## Options
+
+```typescript
+interface VelaClientOptions {
+  baseUrl?: string;         // default: 'https://api.vela.dev'
+  timeout?: number;         // default: 30000 (ms)
+  fetchImpl?: typeof fetch; // default: globalThis.fetch
+}
+```
+
+## Custom base URL
+
+Point to a self-hosted instance or local development server:
+
+```typescript
+const client = new VelaManagementClient(process.env.VELA_CLIENT_SECRET, {
+  baseUrl: 'http://localhost:3000',
+});
+```
+
+## Custom timeout
+
+```typescript
+const client = new VelaIngestClient(process.env.VELA_API_KEY, {
+  timeout: 5_000, // 5 seconds
+});
+```
+
+## Custom fetch
+
+Inject a custom `fetch` implementation for edge runtimes, testing, or instrumentation:
+
+```typescript
+const client = new VelaIngestClient(process.env.VELA_API_KEY, {
+  fetchImpl: myCustomFetch,
+});
+```
+
+This is useful for:
+- **Testing** -- inject a mock fetch to avoid real HTTP calls
+- **Edge runtimes** -- some environments require a specific fetch implementation
+- **Observability** -- wrap fetch with logging or tracing

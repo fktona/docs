@@ -1,0 +1,111 @@
+---
+title: "Schemas"
+description: "Define and manage event schemas"
+---
+
+Every event name you ingest must have a registered schema. The schema defines the expected fields and their types -- events are validated against it at ingest time.
+
+<Note>
+  Schemas are app-scoped. Use `client.forApp('my-app').schemas` to access them.
+</Note>
+
+## List schemas
+
+```typescript
+const schemas = await appRes.schemas.list();
+```
+
+## Get by event name
+
+```typescript
+const schema = await appRes.schemas.getByEventName('order.placed');
+```
+
+## Create a schema
+
+```typescript
+const schema = await appRes.schemas.create({
+  eventName: 'order.placed',
+  description: 'Emitted when a checkout completes',
+  fields: [
+    {
+      id: 'fld-order-id',
+      name: 'orderId',
+      type: 'string',
+      required: true,
+      validation: { min: 1, max: 128 },
+    },
+    {
+      id: 'fld-amount',
+      name: 'amountCents',
+      type: 'number',
+      required: true,
+    },
+    {
+      id: 'fld-currency',
+      name: 'currency',
+      type: 'enum',
+      required: true,
+      enumValues: ['USD', 'EUR', 'GBP'],
+    },
+    {
+      id: 'fld-items',
+      name: 'itemCount',
+      type: 'number',
+      required: false,
+      defaultValue: 1,
+    },
+  ],
+  metadataFields: [
+    {
+      id: 'meta-env',
+      name: 'environment',
+      type: 'string',
+      description: 'e.g. production, staging',
+    },
+  ],
+});
+```
+
+## Update a schema
+
+```typescript
+const updated = await appRes.schemas.update(schema.id, {
+  description: 'Updated description',
+  fields: [...],
+});
+```
+
+## Field types
+
+| Type | Description | Validation options |
+|------|-------------|-------------------|
+| `string` | Text value | `min`, `max` (length), `pattern` (regex) |
+| `number` | Numeric value | `min`, `max` |
+| `boolean` | `true` or `false` | -- |
+| `date` | ISO-8601 date string | -- |
+| `enum` | Fixed set of strings | Provide `enumValues` array |
+| `object` | Nested JSON object | -- |
+
+## Schema field interface
+
+```typescript
+interface SchemaField {
+  id: string;
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'date' | 'enum' | 'object';
+  required: boolean;
+  defaultValue?: unknown;
+  description?: string;
+  enumValues?: string[];
+  validation?: {
+    min?: number;
+    max?: number;
+    pattern?: string;
+  };
+}
+```
+
+<Tip>
+  You can also manage schemas as code using the [Vela CLI](/cli/overview) -- define schemas in JSON files and push them with `vela push`.
+</Tip>

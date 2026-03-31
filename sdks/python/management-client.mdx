@@ -1,0 +1,53 @@
+---
+title: "Management Client"
+description: "Manage apps, schemas, and notification rules"
+---
+
+## Sync client
+
+```python
+from vela import VelaManagementClient
+
+with VelaManagementClient(os.environ["VELA_CLIENT_SECRET"]) as client:
+    apps = client.apps.list()
+    app_res = client.for_app(apps[0].slug)
+    schemas = app_res.schemas.list()
+```
+
+## Async client
+
+```python
+from vela import AsyncVelaManagementClient
+
+async with AsyncVelaManagementClient(os.environ["VELA_CLIENT_SECRET"]) as client:
+    apps = await client.apps.list()
+```
+
+## Constructor
+
+```python
+VelaManagementClient(
+    client_secret: str,
+    *,
+    base_url: str = "https://api.vela.dev",
+    timeout: float = 30.0,
+)
+```
+
+## App-scoped resources
+
+Use `for_app()` to get scoped resource handles:
+
+```python
+app_res = client.for_app("order-service")  # UUID or slug
+
+schemas = app_res.schemas.list()
+rules = app_res.notification_rules.list()
+events = app_res.events.list()
+```
+
+| Resource | Description |
+|----------|-------------|
+| `app_res.schemas` | [Event schemas](/sdks/python/schemas) |
+| `app_res.notification_rules` | [Notification rules](/sdks/python/notification-rules) |
+| `app_res.events` | [Event listing](/sdks/python/events) |

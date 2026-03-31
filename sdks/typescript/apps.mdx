@@ -1,0 +1,74 @@
+---
+title: "Apps"
+description: "Create and manage Vela apps"
+---
+
+Apps are isolated environments that own schemas, events, and notification rules.
+
+## List apps
+
+```typescript
+const apps = await client.apps.list();
+
+apps.forEach(app => {
+  console.log(app.id, app.name, app.slug, app.apiKeyPrefix);
+});
+```
+
+## Create an app
+
+```typescript
+const { app, apiKey } = await client.apps.create({
+  name: 'Order Service',
+  slug: 'order-service', // optional -- auto-generated from name if omitted
+});
+
+// apiKey is shown only once -- store it immediately
+console.log(apiKey); // vela_live_xxxx...
+```
+
+<Warning>
+  The API key is returned only at creation time. Store it in a secure location immediately.
+</Warning>
+
+## Get an app
+
+```typescript
+// Accepts either a UUID or a slug
+const app = await client.apps.get('order-service');
+const app = await client.apps.get('3f2a1b4c-...');
+```
+
+## Update an app
+
+```typescript
+const updated = await client.apps.update('order-service', {
+  name: 'Orders v2',
+  slug: 'orders-v2',
+});
+```
+
+## Rotate API key
+
+```typescript
+const { app, apiKey } = await client.apps.rotateKey('order-service');
+// Old key is immediately revoked
+```
+
+<Warning>
+  Key rotation is irreversible. The old key stops working immediately.
+</Warning>
+
+## Response type
+
+```typescript
+interface AppResponse {
+  id: string;
+  accountId: string;
+  name: string;
+  slug: string;
+  apiKeyPrefix: string;
+  createdAt: string;
+  updatedAt: string;
+}
+```

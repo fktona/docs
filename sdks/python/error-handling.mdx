@@ -1,0 +1,71 @@
+---
+title: "Error Handling"
+description: "Handle API errors in Python"
+---
+
+## Error classes
+
+| Exception | HTTP status |
+|-----------|-------------|
+| `VelaValidationError` | 400 |
+| `VelaAuthError` | 401 |
+| `VelaForbiddenError` | 403 |
+| `VelaNotFoundError` | 404 |
+| `VelaRateLimitError` | 429 |
+| `VelaError` (base) | any other 4xx / 5xx |
+
+## Usage
+
+```python
+from vela import (
+    VelaError,
+    VelaAuthError,
+    VelaNotFoundError,
+    VelaValidationError,
+    VelaRateLimitError,
+)
+
+try:
+    client.apps.get("nonexistent")
+except VelaNotFoundError:
+    print("App not found")
+except VelaAuthError:
+    print("Invalid or missing client secret")
+except VelaValidationError as e:
+    print(f"Validation error: {e}")
+except VelaRateLimitError:
+    print("Rate limited -- back off and retry")
+except VelaError as e:
+    print(f"API error {e.status_code}: {e}")
+```
+
+## Error properties
+
+```python
+class VelaError(Exception):
+    message: str       # Human-readable error message
+    status_code: int   # HTTP status code
+    error: str         # Error type (e.g., "Not Found")
+    path: str          # Request path
+    timestamp: str     # ISO-8601 timestamp
+```
+
+## Network errors
+
+Network errors (timeout, connection refused) propagate as `httpx.TimeoutException` or `httpx.ConnectError` -- not wrapped in `VelaError`:
+
+```python
+import httpx
+
+try:
+    client.apps.list()
+except VelaError:
+    # API returned an error response
+    pass
+except httpx.TimeoutException:
+    # Request timed out
+    pass
+except httpx.ConnectError:
+    # Could not connect to server
+    pass
+```

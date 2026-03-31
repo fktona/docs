@@ -1,0 +1,58 @@
+---
+title: "Configuration"
+description: "Configure base URL and timeout for the Python SDK"
+---
+
+## Constructor options
+
+Both sync and async clients accept the same options:
+
+```python
+VelaManagementClient(
+    client_secret: str,
+    *,
+    base_url: str = "https://api.vela.dev",
+    timeout: float = 30.0,
+)
+```
+
+## Custom base URL
+
+```python
+client = VelaManagementClient(
+    os.environ["VELA_CLIENT_SECRET"],
+    base_url="http://localhost:3000",
+)
+```
+
+## Custom timeout
+
+```python
+client = VelaIngestClient(
+    os.environ["VELA_API_KEY"],
+    timeout=5.0,  # 5 seconds
+)
+```
+
+## Context managers
+
+Both sync and async clients support context managers for clean resource management:
+
+```python
+# Sync
+with VelaManagementClient(secret) as client:
+    apps = client.apps.list()
+# Connection is closed automatically
+
+# Async
+async with AsyncVelaManagementClient(secret) as client:
+    apps = await client.apps.list()
+```
+
+You can also manage the lifecycle manually:
+
+```python
+client = VelaManagementClient(secret)
+apps = client.apps.list()
+client.close()  # or await client.aclose() for async
+```

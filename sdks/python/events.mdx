@@ -1,0 +1,41 @@
+---
+title: "Events (Read)"
+description: "Query and paginate through ingested events with Python"
+---
+
+## List events
+
+```python
+result = app_res.events.list()
+# result.items       -- list[EventResponse]
+# result.next_cursor -- str | None
+```
+
+## With filters
+
+```python
+result = app_res.events.list(
+    level="error",
+    type="payment.failed",
+    from_="2024-06-01T00:00:00.000Z",
+    to="2024-06-30T23:59:59.999Z",
+    limit=50,
+)
+```
+
+<Note>
+  The `from` parameter is named `from_` to avoid shadowing Python's built-in `from` keyword.
+</Note>
+
+## Cursor pagination
+
+```python
+cursor = None
+
+while True:
+    page = app_res.events.list(limit=100, cursor=cursor)
+    process_batch(page.items)
+    if page.next_cursor is None:
+        break
+    cursor = page.next_cursor
+```

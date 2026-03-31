@@ -1,0 +1,71 @@
+---
+title: "Notification Rules"
+description: "Set up conditional event alerts"
+---
+
+Rules watch for events matching a name and optional conditions, then deliver alerts to configured destinations (Slack, Discord, or email).
+
+<Note>
+  Destinations are configured in the [Vela dashboard](https://app.vela.dev). The SDK references them by ID.
+</Note>
+
+## List rules
+
+```typescript
+const rules = await appRes.notificationRules.list();
+```
+
+## Create a rule
+
+```typescript
+const rule = await appRes.notificationRules.create({
+  name: 'Alert on large payment failure',
+  eventName: 'payment.failed',
+  enabled: true, // optional, defaults to true
+  conditions: [
+    {
+      id: 'cond-1',
+      field: 'amountCents',
+      operator: 'greater_than',
+      value: 10000,
+    },
+  ],
+  actions: [
+    {
+      id: 'action-1',
+      destinationId: 'dest-uuid-here',
+      channel: 'slack',
+      enabled: true,
+    },
+  ],
+});
+```
+
+<Tip>
+  Pass an empty `conditions` array to trigger on every matching event regardless of payload.
+</Tip>
+
+## Update a rule
+
+```typescript
+// Pause a rule
+await appRes.notificationRules.update(rule.id, { enabled: false });
+
+// Update conditions
+await appRes.notificationRules.update(rule.id, {
+  conditions: [
+    { id: 'cond-1', field: 'amountCents', operator: 'greater_than', value: 50000 },
+  ],
+});
+```
+
+## Condition operators
+
+| Operator | Description |
+|----------|-------------|
+| `equals` | Field strictly equals value |
+| `not_equals` | Field does not equal value |
+| `greater_than` | Numeric field is greater than value |
+| `less_than` | Numeric field is less than value |
+| `contains` | String field contains value as substring |
+| `starts_with` | String field starts with value |

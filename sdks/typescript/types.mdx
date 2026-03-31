@@ -1,0 +1,194 @@
+---
+title: "TypeScript Types"
+description: "All exported types from @vela/sdk"
+---
+
+All types are exported directly from the package:
+
+```typescript
+import type { ... } from '@vela/sdk';
+```
+
+## Primitives
+
+```typescript
+type EventLevel = 'info' | 'warning' | 'error' | 'success';
+type Plan = 'free' | 'pro' | 'enterprise';
+type IntegrationProvider = 'slack' | 'discord' | 'email';
+type SchemaFieldType = 'string' | 'number' | 'boolean' | 'date' | 'enum' | 'object';
+type ConditionOperator = 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'starts_with';
+```
+
+## Apps
+
+```typescript
+interface AppResponse {
+  id: string;
+  accountId: string;
+  name: string;
+  slug: string;
+  apiKeyPrefix: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface AppWithKeyResponse {
+  app: AppResponse;
+  apiKey: string;
+}
+
+interface CreateAppInput {
+  name: string;
+  slug?: string;
+}
+
+interface UpdateAppInput {
+  name?: string;
+  slug?: string;
+}
+```
+
+## Events
+
+```typescript
+interface IngestEventInput {
+  event: string;
+  customer_id?: string;
+  data: Record<string, unknown>;
+  level: EventLevel;
+  metadata?: Record<string, unknown>;
+  timestamp?: string;
+}
+
+interface EventResponse {
+  id: string;
+  appId: string;
+  event: string;
+  customer_id: string | null;
+  data: Record<string, unknown>;
+  level: EventLevel;
+  metadata: Record<string, unknown>;
+  timestamp: string;
+  ingestedAt: string;
+}
+
+interface IngestResponse {
+  accepted: number;
+  events: EventResponse[];
+}
+
+interface EventListParams {
+  level?: EventLevel;
+  type?: string;
+  from?: string;
+  to?: string;
+  cursor?: string;
+  limit?: number;
+}
+
+interface EventListResponse {
+  items: EventResponse[];
+  nextCursor: string | null;
+}
+```
+
+## Schemas
+
+```typescript
+interface SchemaFieldValidation {
+  min?: number;
+  max?: number;
+  pattern?: string;
+}
+
+interface SchemaField {
+  id: string;
+  name: string;
+  type: SchemaFieldType;
+  required: boolean;
+  defaultValue?: unknown;
+  description?: string;
+  enumValues?: string[];
+  validation?: SchemaFieldValidation;
+}
+
+interface SchemaMetadataField {
+  id: string;
+  name: string;
+  type: SchemaFieldType;
+  description?: string;
+}
+
+interface EventSchemaResponse {
+  id: string;
+  appId: string;
+  eventName: string;
+  description: string | null;
+  fields: SchemaField[];
+  metadataFields: SchemaMetadataField[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CreateEventSchemaInput {
+  eventName: string;
+  description?: string;
+  fields: SchemaField[];
+  metadataFields?: SchemaMetadataField[];
+}
+
+interface UpdateEventSchemaInput {
+  eventName?: string;
+  description?: string;
+  fields?: SchemaField[];
+  metadataFields?: SchemaMetadataField[];
+}
+```
+
+## Notification Rules
+
+```typescript
+interface NotificationCondition {
+  id: string;
+  field: string;
+  operator: ConditionOperator;
+  value: unknown;
+}
+
+interface NotificationAction {
+  id: string;
+  destinationId: string;
+  channel: IntegrationProvider;
+  target?: string;
+  enabled: boolean;
+}
+
+interface NotificationRuleResponse {
+  id: string;
+  appId: string;
+  name: string;
+  eventName: string;
+  conditions: NotificationCondition[];
+  actions: NotificationAction[];
+  enabled: boolean;
+  lastTriggeredAt: string | null;
+  triggerCount: number;
+  createdAt: string;
+}
+
+interface CreateNotificationRuleInput {
+  name: string;
+  eventName: string;
+  conditions: NotificationCondition[];
+  actions: NotificationAction[];
+  enabled?: boolean;
+}
+
+interface UpdateNotificationRuleInput {
+  name?: string;
+  eventName?: string;
+  conditions?: NotificationCondition[];
+  actions?: NotificationAction[];
+  enabled?: boolean;
+}
+```

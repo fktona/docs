@@ -1,0 +1,93 @@
+---
+title: "Core Concepts"
+description: "Understand the Vela data model and how the pieces fit together"
+---
+
+## Architecture overview
+
+<img
+  src="/images/placeholder-architecture.svg"
+  alt="Vela architecture diagram"
+/>
+
+Vela is a multi-tenant event intelligence platform. Here's how the main entities relate:
+
+```
+Account
+  └── App (1:many)
+        ├── Schema (1:many) — defines event shapes
+        ├── Event (1:many) — validated, stored payloads
+        ├── Notification Rule (1:many) — conditional alerts
+        └── API Key — used for event ingestion
+```
+
+## Accounts
+
+An account represents your organization. Each account can own multiple apps, and has a plan that determines limits.
+
+## Apps
+
+An app is an isolated environment that owns everything: schemas, events, rules, and integrations. Think of apps as projects or services.
+
+Each app has:
+- A **name** and **slug** (globally unique identifier)
+- An **API key** (`vela_live_...`) for event ingestion
+- Its own set of schemas, events, and notification rules
+
+## Schemas
+
+A schema defines the expected shape of an event payload. Every event you ingest must match a registered schema.
+
+Schemas enforce:
+- **Required fields** -- the event is rejected if they're missing
+- **Field types** -- `string`, `number`, `boolean`, `date`, `enum`, `object`
+- **Validation rules** -- min/max length, regex patterns, enum values
+- **Metadata fields** -- optional contextual data (environment, trace ID, etc.)
+
+<Tip>
+  Register schemas before ingesting events. Events without a matching schema are rejected.
+</Tip>
+
+## Events
+
+Events are structured data payloads sent to Vela. Each event has:
+
+| Field | Description |
+|-------|-------------|
+| `event` | Event name (must match a schema's `eventName`) |
+| `data` | Payload validated against the schema's fields |
+| `level` | Severity: `info`, `warning`, `error`, `success` |
+| `customer_id` | Optional customer identifier for filtering |
+| `metadata` | Optional contextual data validated against metadata fields |
+| `timestamp` | Optional ISO-8601 timestamp (defaults to ingestion time) |
+
+### Event levels
+
+| Level | When to use |
+|-------|-------------|
+| `info` | Normal business events -- order placed, user signed up |
+| `success` | Completed flows -- payment captured, email delivered |
+| `warning` | Degraded but non-critical -- retry attempt, slow response |
+| `error` | Failures requiring attention -- payment failed, webhook error |
+
+## Notification Rules
+
+Rules watch for events matching a name and optional conditions, then deliver alerts through configured destinations.
+
+A rule has:
+- **Event name** -- which events to watch
+- **Conditions** -- optional field-level filters (e.g., `amountCents > 10000`)
+- **Actions** -- where to send the alert (Slack, Discord, email)
+
+Destinations are configured in the [dashboard](https://app.vela.dev) -- the SDK/API just references them by ID.
+
+## Authentication
+
+Vela uses two types of credentials:
+
+| Credential | Format | Used for | Auth method |
+|------------|--------|----------|-------------|
+| Client secret | `vela_cs_...` | Management API (apps, schemas, rules) | `Authorization: Bearer` header |
+| API key | `vela_live_...` | Event ingestion | `x-api-key` header |
+
+Both are generated in the [Vela dashboard](https://app.vela.dev). See the [credentials guide](/credentials/overview) for details.

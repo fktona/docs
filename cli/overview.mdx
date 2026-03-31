@@ -1,0 +1,61 @@
+---
+title: "Vela CLI"
+description: "Manage event schemas as code -- like Prisma for your events"
+---
+
+The `@vela/cli` package lets you define event schemas as local JSON files and sync them to the Vela API. No more manual API calls to register schemas.
+
+<img
+  src="/images/placeholder-cli-workflow.svg"
+  alt="CLI workflow diagram"
+/>
+
+## How it works
+
+1. **Define** schemas as JSON files in your project
+2. **Preview** changes with `vela diff`
+3. **Push** to create/update schemas on the Vela API
+4. **Pull** to download remote schemas as local files
+
+```bash
+# Define your schemas in vela/schemas/
+vela/schemas/
+  order.placed.json
+  order.cancelled.json
+  payment.failed.json
+
+# Preview what would change
+vela diff
+
+# Push to Vela
+vela push
+```
+
+## Why use the CLI?
+
+- **Version control** -- schemas live in your repo, reviewed in PRs
+- **CI/CD** -- use `vela diff` as a gate to catch schema drift
+- **Team collaboration** -- everyone sees the same schema definitions
+- **Environment parity** -- push the same schemas to staging and production
+
+## Quick links
+
+<CardGroup cols={2}>
+
+<Card title="Installation" icon="download" href="/cli/installation">
+  Install the CLI.
+</Card>
+
+<Card title="Push" icon="arrow-up" href="/cli/push">
+  Sync local schemas to remote.
+</Card>
+
+<Card title="Pull" icon="arrow-down" href="/cli/pull">
+  Download remote schemas to local files.
+</Card>
+
+<Card title="Diff" icon="code-compare" href="/cli/diff">
+  Preview changes without pushing.
+</Card>
+
+</CardGroup>

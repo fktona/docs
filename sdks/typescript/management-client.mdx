@@ -1,0 +1,85 @@
+---
+title: "Management Client"
+description: "Manage apps, schemas, and notification rules with VelaManagementClient"
+---
+
+The `VelaManagementClient` handles all account-level operations. It authenticates with your **client secret** (`vela_cs_...`).
+
+## Constructor
+
+```typescript
+import { VelaManagementClient } from '@vela/sdk';
+
+const client = new VelaManagementClient(clientSecret: string, options?: VelaClientOptions);
+```
+
+```typescript
+const client = new VelaManagementClient(process.env.VELA_CLIENT_SECRET);
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `baseUrl` | `string` | `https://api.vela.dev` | API base URL |
+| `timeout` | `number` | `30000` | Request timeout in ms |
+| `fetchImpl` | `typeof fetch` | `globalThis.fetch` | Custom fetch implementation |
+
+## Top-level resources
+
+### Apps
+
+```typescript
+const apps = await client.apps.list();
+const { app, apiKey } = await client.apps.create({ name: 'My App' });
+```
+
+See the full [Apps reference](/sdks/typescript/apps).
+
+## App-scoped resources
+
+Schemas, notification rules, and events are scoped to a specific app. Use `forApp()` to get scoped resource handles:
+
+```typescript
+const appRes = client.forApp('my-app'); // accepts UUID or slug
+
+// Now use scoped resources:
+const schemas = await appRes.schemas.list();
+const rules = await appRes.notificationRules.list();
+const events = await appRes.events.list();
+```
+
+| Resource | Description |
+|----------|-------------|
+| `appRes.schemas` | [Event schemas](/sdks/typescript/schemas) |
+| `appRes.notificationRules` | [Notification rules](/sdks/typescript/notification-rules) |
+| `appRes.events` | [Event listing](/sdks/typescript/events) |
+
+## Complete example
+
+```typescript
+import { VelaManagementClient } from '@vela/sdk';
+
+const client = new VelaManagementClient(process.env.VELA_CLIENT_SECRET);
+
+// Create an app
+const { app, apiKey } = await client.apps.create({ name: 'Order Service' });
+
+// Define a schema
+const appRes = client.forApp(app.slug);
+await appRes.schemas.create({
+  eventName: 'order.placed',
+  fields: [
+    { id: 'f1', name: 'orderId', type: 'string', required: true },
+    { id: 'f2', name: 'amountCents', type: 'number', required: true },
+  ],
+});
+
+// Set up alerts
+await appRes.notificationRules.create({
+  name: 'Alert on errors',
+  eventName: 'order.placed',
+  conditions: [],
+  actions: [
+    { id: 'a1', destinationId: '<dest-id>', channel: 'slack', enabled: true },
+  ],
+});
+```

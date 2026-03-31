@@ -1,68 +1,180 @@
-{
+ {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Vela",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#a78bfa",
+    "light": "#ede9fe",
+    "dark": "#7c3aed"
   },
   "favicon": "/favicon.svg",
+  "openapi": [
+    "api-reference/openapi.json"
+  ],
   "navigation": {
     "tabs": [
       {
         "tab": "Guides",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Getting Started",
             "pages": [
               "index",
               "quickstart",
-              "development"
+              "concepts",
+              "ui-walkthrough"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Credentials",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
-            ]
-          },
-          {
-            "group": "Writing content",
-            "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "credentials/overview",
+              "credentials/client-secrets",
+              "credentials/api-keys"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "TypeScript SDK",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
-              "api-reference/introduction"
+              "sdks/typescript/overview",
+              "sdks/typescript/installation"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Clients",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "sdks/typescript/ingest-client",
+              "sdks/typescript/management-client"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "sdks/typescript/apps",
+              "sdks/typescript/schemas",
+              "sdks/typescript/notification-rules",
+              "sdks/typescript/events"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "sdks/typescript/error-handling",
+              "sdks/typescript/configuration",
+              "sdks/typescript/types"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Python SDK",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "sdks/python/overview",
+              "sdks/python/installation"
+            ]
+          },
+          {
+            "group": "Clients",
+            "pages": [
+              "sdks/python/ingest-client",
+              "sdks/python/management-client"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "sdks/python/apps",
+              "sdks/python/schemas",
+              "sdks/python/notification-rules",
+              "sdks/python/events"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "sdks/python/error-handling",
+              "sdks/python/configuration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "cli/overview",
+              "cli/installation"
+            ]
+          },
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/push",
+              "cli/pull",
+              "cli/diff"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "cli/configuration",
+              "cli/schema-format"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "API Documentation",
+            "pages": [
+              "api-reference/introduction",
+              "api-reference/authentication"
+            ]
+          },
+          {
+            "group": "Apps",
+            "pages": [
+              "api-reference/apps/list-apps",
+              "api-reference/apps/create-app",
+              "api-reference/apps/get-app",
+              "api-reference/apps/update-app",
+              "api-reference/apps/rotate-api-key"
+            ]
+          },
+          {
+            "group": "Schemas",
+            "pages": [
+              "api-reference/schemas/list-schemas",
+              "api-reference/schemas/create-schema",
+              "api-reference/schemas/update-schema",
+              "api-reference/schemas/get-schema-by-event-name"
+            ]
+          },
+          {
+            "group": "Events",
+            "pages": [
+              "api-reference/events/ingest-events",
+              "api-reference/events/list-events"
+            ]
+          },
+          {
+            "group": "Notification Rules",
+            "pages": [
+              "api-reference/notification-rules/list-notification-rules",
+              "api-reference/notification-rules/create-notification-rule",
+              "api-reference/notification-rules/update-notification-rule"
             ]
           }
         ]
@@ -71,52 +183,41 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "GitHub",
+          "href": "https://github.com/vela-dev",
+          "icon": "github"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Dashboard",
+          "href": "https://app.vela.dev",
+          "icon": "gauge"
         }
       ]
     }
   },
   "logo": {
     "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "dark": "/logo/dark.svg",
+    "width": 1400,
+    "height": 1400
   },
   "navbar": {
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "mailto:support@vela.dev"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "href": "https://app.vela.dev"
     }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "x": "https://x.com/veladev",
+      "github": "https://github.com/vela-dev"
     }
   }
 }

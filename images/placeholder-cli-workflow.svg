@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300" fill="none">
+  <rect width="800" height="300" rx="12" fill="#fafaf9"/>
+
+  <!-- Local Files -->
+  <rect x="40" y="80" width="160" height="140" rx="8" fill="#18181b"/>
+  <text x="120" y="115" text-anchor="middle" fill="#a78bfa" font-family="system-ui" font-size="13" font-weight="600">Local Schemas</text>
+  <rect x="55" y="130" width="130" height="28" rx="4" fill="#27272a"/>
+  <text x="120" y="149" text-anchor="middle" fill="#d4d4d8" font-family="monospace" font-size="10">order.placed.json</text>
+  <rect x="55" y="165" width="130" height="28" rx="4" fill="#27272a"/>
+  <text x="120" y="184" text-anchor="middle" fill="#d4d4d8" font-family="monospace" font-size="10">user.signup.json</text>
+
+  <!-- vela diff -->
+  <line x1="200" y1="130" x2="280" y2="130" stroke="#a78bfa" stroke-width="2" stroke-dasharray="6,4"/>
+  <polygon points="278,124 290,130 278,136" fill="#a78bfa"/>
+  <text x="245" y="120" text-anchor="middle" fill="#71717a" font-family="system-ui" font-size="11">diff</text>
+
+  <!-- Diff Engine -->
+  <rect x="290" y="80" width="140" height="60" rx="8" fill="#a78bfa"/>
+  <text x="360" y="107" text-anchor="middle" fill="#fff" font-family="system-ui" font-size="14" font-weight="700">vela diff</text>
+  <text x="360" y="127" text-anchor="middle" fill="#ede9fe" font-family="system-ui" font-size="11">Compare changes</text>
+
+  <!-- vela push -->
+  <rect x="290" y="160" width="140" height="60" rx="8" fill="#7c3aed"/>
+  <text x="360" y="187" text-anchor="middle" fill="#fff" font-family="system-ui" font-size="14" font-weight="700">vela push</text>
+  <text x="360" y="207" text-anchor="middle" fill="#ede9fe" font-family="system-ui" font-size="11">Sync to remote</text>
+
+  <!-- Arrow from local to push -->
+  <line x1="200" y1="190" x2="280" y2="190" stroke="#7c3aed" stroke-width="2"/>
+  <polygon points="278,184 290,190 278,196" fill="#7c3aed"/>
+  <text x="245" y="205" text-anchor="middle" fill="#71717a" font-family="system-ui" font-size="11">push</text>
+
+  <!-- Arrow from push to API -->
+  <line x1="430" y1="190" x2="510" y2="190" stroke="#7c3aed" stroke-width="2"/>
+  <polygon points="508,184 520,190 508,196" fill="#7c3aed"/>
+
+  <!-- Vela API -->
+  <rect x="520" y="100" width="170" height="120" rx="8" fill="#18181b"/>
+  <text x="605" y="145" text-anchor="middle" fill="#a78bfa" font-family="system-ui" font-size="15" font-weight="700">Vela API</text>
+  <text x="605" y="170" text-anchor="middle" fill="#71717a" font-family="system-ui" font-size="11">Remote schemas</text>
+  <text x="605" y="190" text-anchor="middle" fill="#71717a" font-family="system-ui" font-size="11">source of truth</text>
+
+  <!-- Arrow from API back (pull) -->
+  <line x1="520" y1="110" x2="360" y2="70" stroke="#a78bfa" stroke-width="2" stroke-dasharray="6,4"/>
+  <polygon points="358,64 360,76 366,64" fill="#a78bfa"/>
+
+  <!-- vela pull label -->
+  <rect x="390" y="40" width="100" height="30" rx="6" fill="#a78bfa"/>
+  <text x="440" y="60" text-anchor="middle" fill="#fff" font-family="system-ui" font-size="12" font-weight="600">vela pull</text>
+
+  <!-- Pull arrow back to local -->
+  <line x1="360" y1="70" x2="200" y2="100" stroke="#a78bfa" stroke-width="2" stroke-dasharray="6,4"/>
+  <polygon points="198,94 200,106 206,94" fill="#a78bfa"/>
+</svg>

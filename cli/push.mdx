@@ -1,0 +1,55 @@
+---
+title: "vela push"
+description: "Sync local schema files to the remote Vela API"
+---
+
+Reads local schema files, compares them against the remote API, and creates or updates schemas that have changed.
+
+## Usage
+
+```bash
+vela push
+```
+
+## Example output
+
+```
+i Found 3 local schema(s) in ./vela/schemas
+✓ Created order.cancelled
+✓ Updated order.placed
+  ~ description changed
+  + field "currency" (enum, required)
+
+i Created 1, Updated 1, Unchanged 1
+```
+
+## What happens
+
+1. Reads all `.json` files from your schemas directory
+2. Fetches all existing schemas from the Vela API
+3. Compares local vs. remote by `eventName`
+4. **Creates** schemas that don't exist remotely
+5. **Updates** schemas that have changed (fields, description, metadata)
+6. **Skips** schemas that are identical
+
+## Options
+
+```bash
+vela push --app staging-app --dir ./schemas/staging
+```
+
+| Flag | Description |
+|------|-------------|
+| `--app <slug>` | Override the app from `vela.config.json` |
+| `--dir <path>` | Override the schemas directory |
+
+## Error handling
+
+If a schema fails to create or update, the error is shown inline and the CLI continues with remaining schemas:
+
+```
+✗ Failed order.placed: Validation error: field "orderId" type mismatch
+✓ Created payment.failed
+
+i Created 1, Updated 0, Unchanged 0
+```

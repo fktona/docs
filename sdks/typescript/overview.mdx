@@ -1,0 +1,55 @@
+---
+title: "TypeScript SDK"
+description: "Official TypeScript/JavaScript SDK for the Vela platform"
+---
+
+The `@vela/sdk` package provides a type-safe client for the Vela API. It has zero runtime dependencies and uses the native `fetch` API.
+
+## Features
+
+- **Zero dependencies** -- uses native `fetch` (Node.js 18+, all modern browsers)
+- **Dual CJS + ESM** -- works with any module system
+- **Full TypeScript types** -- all inputs and responses are typed
+- **Two clients** -- `VelaIngestClient` for events, `VelaManagementClient` for everything else
+- **Typed error hierarchy** -- catch specific error types like `VelaNotFoundError`
+
+## Two clients
+
+| Client | Auth | Purpose |
+|--------|------|---------|
+| `VelaIngestClient` | API key (`vela_live_...`) | Send events |
+| `VelaManagementClient` | Client secret (`vela_cs_...`) | Manage apps, schemas, rules |
+
+```typescript
+import { VelaIngestClient, VelaManagementClient } from '@vela/sdk';
+
+// Ingest events
+const ingest = new VelaIngestClient(process.env.VELA_API_KEY);
+await ingest.ingest({ event: 'order.placed', data: { orderId: 'ord_1' }, level: 'info' });
+
+// Manage resources
+const client = new VelaManagementClient(process.env.VELA_CLIENT_SECRET);
+const apps = await client.apps.list();
+```
+
+## Quick links
+
+<CardGroup cols={2}>
+
+<Card title="Installation" icon="download" href="/sdks/typescript/installation">
+  Install and set up the SDK.
+</Card>
+
+<Card title="Ingest Client" icon="bolt" href="/sdks/typescript/ingest-client">
+  Send single and batch events.
+</Card>
+
+<Card title="Management Client" icon="gear" href="/sdks/typescript/management-client">
+  Manage apps, schemas, and rules.
+</Card>
+
+<Card title="Error Handling" icon="triangle-exclamation" href="/sdks/typescript/error-handling">
+  Handle API errors gracefully.
+</Card>
+
+</CardGroup>

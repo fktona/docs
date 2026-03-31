@@ -1,0 +1,58 @@
+---
+title: "Notification Rules"
+description: "Set up conditional event alerts with Python"
+---
+
+## List rules
+
+```python
+rules = app_res.notification_rules.list()
+```
+
+## Create a rule
+
+```python
+rule = app_res.notification_rules.create({
+    "name": "Alert on large payment failure",
+    "event_name": "payment.failed",
+    "enabled": True,
+    "conditions": [
+        {
+            "id": "cond-1",
+            "field": "amountCents",
+            "operator": "greater_than",
+            "value": 10000,
+        },
+    ],
+    "actions": [
+        {
+            "id": "action-1",
+            "destination_id": "dest-uuid-here",
+            "channel": "slack",
+            "enabled": True,
+        },
+    ],
+})
+```
+
+<Tip>
+  Pass an empty `conditions` list to trigger on every matching event.
+</Tip>
+
+## Update a rule
+
+```python
+# Pause a rule
+app_res.notification_rules.update(rule.id, {"enabled": False})
+```
+
+## Condition operators
+
+| Operator | Description |
+|----------|-------------|
+| `equals` | Field strictly equals value |
+| `not_equals` | Field does not equal value |
+| `greater_than` | Numeric field is greater than value |
+| `less_than` | Numeric field is less than value |
+| `contains` | String field contains substring |
+| `starts_with` | String field starts with value |

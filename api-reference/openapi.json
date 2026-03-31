@@ -1,58 +1,248 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "OpenAPI Plant Store",
-    "description": "A sample API that uses a plant store as an example to demonstrate features in the OpenAPI specification",
-    "license": {
-      "name": "MIT"
-    },
-    "version": "1.0.0"
+    "title": "Vela API",
+    "description": "Event ingestion, schema management, and notification rules for Vela.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Vela Support",
+      "email": "support@vela.dev"
+    }
   },
   "servers": [
     {
-      "url": "http://sandbox.mintlify.com"
+      "url": "https://api.vela.dev/v1",
+      "description": "Production"
+    },
+    {
+      "url": "http://localhost:3000/v1",
+      "description": "Local development"
     }
   ],
   "security": [
     {
-      "bearerAuth": []
+      "clientSecret": []
     }
   ],
   "paths": {
-    "/plants": {
+    "/apps": {
       "get": {
-        "description": "Returns all plants from the system that the user has access to",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "The maximum number of results to return",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
+        "operationId": "list-apps",
+        "summary": "List Apps",
+        "description": "Returns all apps belonging to the authenticated account.",
+        "tags": ["Apps"],
+        "security": [{ "clientSecret": [] }],
         "responses": {
           "200": {
-            "description": "Plant response",
+            "description": "List of apps",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Plant"
+                  "items": { "$ref": "#/components/schemas/App" }
+                },
+                "example": [
+                  {
+                    "id": "3f2a1b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
+                    "accountId": "acc-uuid",
+                    "name": "Order Service",
+                    "slug": "order-service",
+                    "apiKeyPrefix": "vela_live_abc",
+                    "createdAt": "2024-06-01T12:00:00.000Z",
+                    "updatedAt": "2024-06-01T12:00:00.000Z"
                   }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "create-app",
+        "summary": "Create App",
+        "description": "Creates a new app and returns the generated API key. The full API key is **only returned in this response** — store it securely.",
+        "tags": ["Apps"],
+        "security": [{ "clientSecret": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "App display name"
+                  },
+                  "slug": {
+                    "type": "string",
+                    "description": "URL-friendly identifier. Auto-generated from name if omitted."
+                  }
+                }
+              },
+              "example": {
+                "name": "Order Service",
+                "slug": "order-service"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "App created with API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppWithApiKey"
+                },
+                "example": {
+                  "app": {
+                    "id": "3f2a1b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
+                    "accountId": "acc-uuid",
+                    "name": "Order Service",
+                    "slug": "order-service",
+                    "apiKeyPrefix": "vela_live_abc",
+                    "createdAt": "2024-06-01T12:00:00.000Z",
+                    "updatedAt": "2024-06-01T12:00:00.000Z"
+                  },
+                  "apiKey": "vela_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apps/{appId}": {
+      "get": {
+        "operationId": "get-app",
+        "summary": "Get App",
+        "description": "Returns a single app by UUID or slug.",
+        "tags": ["Apps"],
+        "security": [{ "clientSecret": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/AppId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "App details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/App" }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "update-app",
+        "summary": "Update App",
+        "description": "Updates an app's name and/or slug.",
+        "tags": ["Apps"],
+        "security": [{ "clientSecret": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/AppId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "New display name"
+                  },
+                  "slug": {
+                    "type": "string",
+                    "description": "New slug"
+                  }
+                }
+              },
+              "example": {
+                "name": "Orders v2",
+                "slug": "orders-v2"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated app",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/App" }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/apps/{appId}/keys/rotate": {
+      "post": {
+        "operationId": "rotate-api-key",
+        "summary": "Rotate API Key",
+        "description": "Generates a new API key for the app. The old key is **immediately revoked** — this action is irreversible.",
+        "tags": ["Apps"],
+        "security": [{ "clientSecret": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/AppId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "New API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppWithApiKey"
+                },
+                "example": {
+                  "app": {
+                    "id": "3f2a1b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
+                    "accountId": "acc-uuid",
+                    "name": "Order Service",
+                    "slug": "order-service",
+                    "apiKeyPrefix": "vela_live_xyz",
+                    "createdAt": "2024-06-01T12:00:00.000Z",
+                    "updatedAt": "2024-06-01T14:00:00.000Z"
+                  },
+                  "apiKey": "vela_live_newkeyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                 }
               }
             }
           },
-          "400": {
-            "description": "Unexpected error",
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/apps/{appId}/schemas": {
+      "get": {
+        "operationId": "list-schemas",
+        "summary": "List Schemas",
+        "description": "Returns all event schemas for an app.",
+        "tags": ["Schemas"],
+        "security": [{ "clientSecret": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/AppId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of schemas",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/EventSchema" }
                 }
               }
             }
@@ -60,35 +250,223 @@
         }
       },
       "post": {
-        "description": "Creates a new plant in the store",
+        "operationId": "create-schema",
+        "summary": "Create Schema",
+        "description": "Registers a new event schema for the app.",
+        "tags": ["Schemas"],
+        "security": [{ "clientSecret": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/AppId" }
+        ],
         "requestBody": {
-          "description": "Plant to add to the store",
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NewPlant"
+                "$ref": "#/components/schemas/CreateSchemaInput"
+              },
+              "example": {
+                "eventName": "order.placed",
+                "description": "Emitted when a checkout completes",
+                "fields": [
+                  { "id": "fld-order-id", "name": "orderId", "type": "string", "required": true },
+                  { "id": "fld-amount", "name": "amountCents", "type": "number", "required": true }
+                ],
+                "metadataFields": [
+                  { "id": "meta-env", "name": "environment", "type": "string" }
+                ]
               }
             }
-          },
-          "required": true
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Schema created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/EventSchema" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apps/{appId}/schemas/{schemaId}": {
+      "patch": {
+        "operationId": "update-schema",
+        "summary": "Update Schema",
+        "description": "Updates an existing event schema. All fields are optional. The `fields` array replaces existing fields entirely.",
+        "tags": ["Schemas"],
+        "security": [{ "clientSecret": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/AppId" },
+          {
+            "name": "schemaId",
+            "in": "path",
+            "required": true,
+            "description": "Schema identifier",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "description": "Human-readable description"
+                  },
+                  "fields": {
+                    "type": "array",
+                    "description": "Replaces existing fields entirely",
+                    "items": { "$ref": "#/components/schemas/SchemaField" }
+                  },
+                  "metadataFields": {
+                    "type": "array",
+                    "description": "Replaces existing metadata fields entirely",
+                    "items": { "$ref": "#/components/schemas/SchemaField" }
+                  }
+                }
+              },
+              "example": {
+                "description": "Updated description",
+                "fields": [
+                  { "id": "fld-order-id", "name": "orderId", "type": "string", "required": true },
+                  { "id": "fld-amount", "name": "amountCents", "type": "number", "required": true },
+                  { "id": "fld-currency", "name": "currency", "type": "enum", "required": true, "enumValues": ["USD", "EUR", "GBP"] }
+                ]
+              }
+            }
+          }
         },
         "responses": {
           "200": {
-            "description": "plant response",
+            "description": "Updated schema",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Plant"
-                }
+                "schema": { "$ref": "#/components/schemas/EventSchema" }
               }
             }
           },
-          "400": {
-            "description": "unexpected error",
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/apps/{appId}/schemas/by-event-name/{eventName}": {
+      "get": {
+        "operationId": "get-schema-by-event-name",
+        "summary": "Get Schema by Event Name",
+        "description": "Returns a single schema by its event name.",
+        "tags": ["Schemas"],
+        "security": [{ "clientSecret": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/AppId" },
+          {
+            "name": "eventName",
+            "in": "path",
+            "required": true,
+            "description": "Event name (e.g. `order.placed`)",
+            "schema": { "type": "string" },
+            "example": "order.placed"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schema details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/EventSchema" }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/ingest": {
+      "post": {
+        "operationId": "ingest-events",
+        "summary": "Ingest Events",
+        "description": "Send one or more events to Vela. Events are validated against their registered schema. Supports single event or batch of up to 100.",
+        "tags": ["Events"],
+        "security": [{ "apiKey": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/SingleEventInput" },
+                  { "$ref": "#/components/schemas/BatchEventInput" }
+                ]
+              },
+              "examples": {
+                "single": {
+                  "summary": "Single event",
+                  "value": {
+                    "event": "order.placed",
+                    "data": {
+                      "orderId": "ord_abc123",
+                      "amountCents": 4999
+                    },
+                    "level": "info",
+                    "customer_id": "cust_42",
+                    "metadata": { "env": "production" }
+                  }
+                },
+                "batch": {
+                  "summary": "Batch (up to 100)",
+                  "value": {
+                    "events": [
+                      { "event": "order.placed", "data": { "orderId": "ord_1" }, "level": "info" },
+                      { "event": "order.placed", "data": { "orderId": "ord_2" }, "level": "info" }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Events accepted",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "type": "object",
+                  "properties": {
+                    "accepted": {
+                      "type": "integer",
+                      "description": "Number of events accepted"
+                    },
+                    "events": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Event" }
+                    }
+                  }
+                },
+                "example": {
+                  "accepted": 2,
+                  "events": [
+                    {
+                      "id": "evt-uuid-1",
+                      "appId": "app-uuid",
+                      "event": "order.placed",
+                      "customer_id": null,
+                      "data": { "orderId": "ord_1" },
+                      "level": "info",
+                      "metadata": {},
+                      "timestamp": "2024-06-01T12:00:00.000Z",
+                      "ingestedAt": "2024-06-01T12:00:00.123Z"
+                    }
+                  ]
                 }
               }
             }
@@ -96,121 +474,491 @@
         }
       }
     },
-    "/plants/{id}": {
-      "delete": {
-        "description": "Deletes a single plant based on the ID supplied",
+    "/apps/{appId}/events": {
+      "get": {
+        "operationId": "list-events",
+        "summary": "List Events",
+        "description": "Returns paginated events for an app with optional filters.",
+        "tags": ["Events"],
+        "security": [{ "clientSecret": [] }],
         "parameters": [
+          { "$ref": "#/components/parameters/AppId" },
           {
-            "name": "id",
-            "in": "path",
-            "description": "ID of plant to delete",
-            "required": true,
+            "name": "level",
+            "in": "query",
+            "description": "Filter by level",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "enum": ["info", "warning", "error", "success"]
             }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter by event name",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Start of time range (ISO-8601)",
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "End of time range (ISO-8601)",
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Results per page (max 100)",
+            "schema": { "type": "integer", "default": 25, "maximum": 100 }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Pagination cursor from previous response",
+            "schema": { "type": "string" }
           }
         ],
         "responses": {
-          "204": {
-            "description": "Plant deleted",
-            "content": {}
-          },
-          "400": {
-            "description": "unexpected error",
+          "200": {
+            "description": "Paginated events",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Event" }
+                    },
+                    "nextCursor": {
+                      "type": ["string", "null"],
+                      "description": "Cursor for the next page. `null` when there are no more pages."
+                    }
+                  }
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "evt-uuid",
+                      "appId": "app-uuid",
+                      "event": "payment.failed",
+                      "customer_id": "cust_42",
+                      "data": { "orderId": "ord_1", "reason": "card_declined" },
+                      "level": "error",
+                      "metadata": { "env": "production" },
+                      "timestamp": "2024-06-01T12:00:00.000Z",
+                      "ingestedAt": "2024-06-01T12:00:00.123Z"
+                    }
+                  ],
+                  "nextCursor": "eyJpZCI6ImV2dC11dWlkIn0="
                 }
               }
             }
           }
         }
       }
-    }
-  },
-  "webhooks": {
-    "/plant/webhook": {
+    },
+    "/apps/{appId}/notification-rules": {
+      "get": {
+        "operationId": "list-notification-rules",
+        "summary": "List Notification Rules",
+        "description": "Returns all notification rules for an app.",
+        "tags": ["Notification Rules"],
+        "security": [{ "clientSecret": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/AppId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of notification rules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/NotificationRule" }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
-        "description": "Information about a new plant added to the store",
+        "operationId": "create-notification-rule",
+        "summary": "Create Notification Rule",
+        "description": "Creates a new notification rule.",
+        "tags": ["Notification Rules"],
+        "security": [{ "clientSecret": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/AppId" }
+        ],
         "requestBody": {
-          "description": "Plant added to the store",
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NewPlant"
+                "$ref": "#/components/schemas/CreateNotificationRuleInput"
+              },
+              "example": {
+                "name": "Alert on large payment failure",
+                "eventName": "payment.failed",
+                "enabled": true,
+                "conditions": [
+                  { "id": "cond-1", "field": "amountCents", "operator": "greater_than", "value": 10000 }
+                ],
+                "actions": [
+                  { "id": "action-1", "destinationId": "dest-uuid", "channel": "slack", "enabled": true }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Rule created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NotificationRule" },
+                "example": {
+                  "id": "rule-uuid",
+                  "appId": "app-uuid",
+                  "name": "Alert on large payment failure",
+                  "eventName": "payment.failed",
+                  "conditions": [
+                    { "id": "cond-1", "field": "amountCents", "operator": "greater_than", "value": 10000 }
+                  ],
+                  "actions": [
+                    { "id": "action-1", "destinationId": "dest-uuid", "channel": "slack", "target": null, "enabled": true }
+                  ],
+                  "enabled": true,
+                  "lastTriggeredAt": null,
+                  "triggerCount": 0,
+                  "createdAt": "2024-06-01T12:00:00.000Z"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apps/{appId}/notification-rules/{ruleId}": {
+      "patch": {
+        "operationId": "update-notification-rule",
+        "summary": "Update Notification Rule",
+        "description": "Updates an existing notification rule. All fields are optional.",
+        "tags": ["Notification Rules"],
+        "security": [{ "clientSecret": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/AppId" },
+          {
+            "name": "ruleId",
+            "in": "path",
+            "required": true,
+            "description": "Notification rule identifier",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "New display name"
+                  },
+                  "eventName": {
+                    "type": "string",
+                    "description": "New event name to watch"
+                  },
+                  "conditions": {
+                    "type": "array",
+                    "description": "Updated conditions array",
+                    "items": { "$ref": "#/components/schemas/RuleCondition" }
+                  },
+                  "actions": {
+                    "type": "array",
+                    "description": "Updated actions array",
+                    "items": { "$ref": "#/components/schemas/RuleAction" }
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Enable or disable the rule"
+                  }
+                }
+              },
+              "example": {
+                "enabled": false
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Return a 200 status to indicate that the data was received successfully"
+            "description": "Updated rule",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NotificationRule" }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           }
         }
       }
     }
   },
   "components": {
-    "schemas": {
-      "Plant": {
-        "required": [
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "name": {
-            "description": "The name of the plant",
-            "type": "string"
-          },
-          "tag": {
-            "description": "Tag to specify the type",
-            "type": "string"
-          }
-        }
+    "securitySchemes": {
+      "clientSecret": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Client secret for management API access. Format: `vela_cs_...`"
       },
-      "NewPlant": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Plant"
-          },
-          {
-            "required": [
-              "id"
-            ],
-            "type": "object",
-            "properties": {
-              "id": {
-                "description": "Identification number of the plant",
-                "type": "integer",
-                "format": "int64"
-              }
+      "apiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "API key for event ingestion. Format: `vela_live_...`"
+      }
+    },
+    "parameters": {
+      "AppId": {
+        "name": "appId",
+        "in": "path",
+        "required": true,
+        "description": "App UUID or slug",
+        "schema": { "type": "string" },
+        "example": "order-service"
+      }
+    },
+    "responses": {
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": {
+              "statusCode": 404,
+              "error": "Not Found",
+              "message": "Resource not found"
             }
-          }
-        ]
-      },
-      "Error": {
-        "required": [
-          "error",
-          "message"
-        ],
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "message": {
-            "type": "string"
           }
         }
       }
     },
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer"
+    "schemas": {
+      "App": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "description": "App identifier" },
+          "accountId": { "type": "string", "format": "uuid", "description": "Associated account" },
+          "name": { "type": "string", "description": "App display name" },
+          "slug": { "type": "string", "description": "URL-friendly identifier" },
+          "apiKeyPrefix": { "type": "string", "description": "Prefix of the current API key" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AppWithApiKey": {
+        "type": "object",
+        "properties": {
+          "app": { "$ref": "#/components/schemas/App" },
+          "apiKey": { "type": "string", "description": "Full API key (only returned on creation or rotation)" }
+        }
+      },
+      "SchemaField": {
+        "type": "object",
+        "required": ["id", "name", "type"],
+        "properties": {
+          "id": { "type": "string", "description": "Field identifier" },
+          "name": { "type": "string", "description": "Field name" },
+          "type": {
+            "type": "string",
+            "enum": ["string", "number", "boolean", "enum"],
+            "description": "Field data type"
+          },
+          "required": { "type": "boolean", "description": "Whether the field is required", "default": false },
+          "enumValues": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Allowed values (only for `enum` type)"
+          }
+        }
+      },
+      "EventSchema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "Schema identifier" },
+          "appId": { "type": "string", "format": "uuid", "description": "Associated app" },
+          "eventName": { "type": "string", "description": "Event name (unique per app)" },
+          "description": { "type": "string", "description": "Human-readable description" },
+          "fields": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SchemaField" },
+            "description": "Event data field definitions"
+          },
+          "metadataFields": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SchemaField" },
+            "description": "Metadata field definitions"
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateSchemaInput": {
+        "type": "object",
+        "required": ["eventName", "fields"],
+        "properties": {
+          "eventName": { "type": "string", "description": "Event name (unique per app)" },
+          "description": { "type": "string", "description": "Human-readable description" },
+          "fields": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SchemaField" },
+            "description": "At least one field definition",
+            "minItems": 1
+          },
+          "metadataFields": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SchemaField" },
+            "description": "Optional metadata field definitions"
+          }
+        }
+      },
+      "SingleEventInput": {
+        "type": "object",
+        "required": ["event", "data", "level"],
+        "properties": {
+          "event": { "type": "string", "description": "Event name (must match a registered schema)" },
+          "data": { "type": "object", "description": "Event payload (validated against schema)" },
+          "level": {
+            "type": "string",
+            "enum": ["info", "warning", "error", "success"],
+            "description": "Event severity level"
+          },
+          "customer_id": { "type": "string", "description": "Customer identifier" },
+          "metadata": { "type": "object", "description": "Contextual data (validated against metadata fields)" },
+          "timestamp": { "type": "string", "format": "date-time", "description": "ISO-8601 timestamp (defaults to now)" }
+        }
+      },
+      "BatchEventInput": {
+        "type": "object",
+        "required": ["events"],
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SingleEventInput" },
+            "maxItems": 100,
+            "description": "Array of events (up to 100)"
+          }
+        }
+      },
+      "Event": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "Event identifier" },
+          "appId": { "type": "string", "format": "uuid" },
+          "event": { "type": "string", "description": "Event name" },
+          "customer_id": { "type": ["string", "null"], "description": "Customer identifier" },
+          "data": { "type": "object", "description": "Event payload" },
+          "level": { "type": "string", "enum": ["info", "warning", "error", "success"] },
+          "metadata": { "type": "object", "description": "Contextual metadata" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "ingestedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "RuleCondition": {
+        "type": "object",
+        "required": ["id", "field", "operator", "value"],
+        "properties": {
+          "id": { "type": "string", "description": "Condition identifier" },
+          "field": { "type": "string", "description": "Event data field to evaluate" },
+          "operator": {
+            "type": "string",
+            "enum": ["equals", "not_equals", "greater_than", "less_than", "contains", "starts_with"],
+            "description": "Comparison operator"
+          },
+          "value": {
+            "description": "Value to compare against",
+            "oneOf": [
+              { "type": "string" },
+              { "type": "number" }
+            ]
+          }
+        }
+      },
+      "RuleAction": {
+        "type": "object",
+        "required": ["id", "destinationId", "channel"],
+        "properties": {
+          "id": { "type": "string", "description": "Action identifier" },
+          "destinationId": { "type": "string", "description": "Destination identifier" },
+          "channel": {
+            "type": "string",
+            "enum": ["slack", "discord", "email"],
+            "description": "Delivery channel"
+          },
+          "target": { "type": ["string", "null"], "description": "Channel-specific target" },
+          "enabled": { "type": "boolean", "default": true }
+        }
+      },
+      "NotificationRule": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "Rule identifier" },
+          "appId": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "description": "Rule display name" },
+          "eventName": { "type": "string", "description": "Event name to watch" },
+          "conditions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RuleCondition" },
+            "description": "Conditions to evaluate (empty = trigger on all)"
+          },
+          "actions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RuleAction" },
+            "description": "Delivery actions"
+          },
+          "enabled": { "type": "boolean" },
+          "lastTriggeredAt": { "type": ["string", "null"], "format": "date-time" },
+          "triggerCount": { "type": "integer" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateNotificationRuleInput": {
+        "type": "object",
+        "required": ["name", "eventName", "conditions", "actions"],
+        "properties": {
+          "name": { "type": "string", "description": "Rule display name" },
+          "eventName": { "type": "string", "description": "Event name to watch" },
+          "enabled": { "type": "boolean", "default": true },
+          "conditions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RuleCondition" },
+            "description": "Array of conditions (empty array = trigger on all)"
+          },
+          "actions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RuleAction" },
+            "description": "Array of delivery actions"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "statusCode": { "type": "integer" },
+          "error": { "type": "string" },
+          "message": { "type": "string" }
+        }
       }
     }
   }
