@@ -1,6 +1,6 @@
 ---
 title: "Installation"
-description: "Install and set up the Vela CLI"
+description: "Install and configure the Vela CLI to manage schemas as code."
 ---
 
 ## Install
@@ -8,60 +8,108 @@ description: "Install and set up the Vela CLI"
 <CodeGroup>
 
 ```bash npm (global)
-npm install -g @vela/cli
+npm install -g @vela-event/cli
+```
+
+```bash pnpm (global)
+pnpm add -g @vela-event/cli
 ```
 
 ```bash npx (no install)
-npx @vela/cli <command>
+npx @vela-event/cli <command>
 ```
 
 </CodeGroup>
 
+Installing globally lets you run `vela` directly. Using `npx` is better for CI environments where you want a specific version pinned in `package.json`.
+
 ## Requirements
 
 - **Node.js 18+**
+- A Vela account with at least one app created
+- A **client secret** (`vela_cs_...`) — found in Settings → Client Secrets
 
-## Set up
+## Setup
 
-### 1. Create a config file
+<Steps>
+  <Step title="Create a config file">
+    In your project root, create `vela.config.json`:
 
-Create `vela.config.json` in your project root:
+    ```json
+    {
+      "app": "your-app-slug",
+      "schemasDir": "./vela/schemas"
+    }
+    ```
+
+    The `app` value is your app's slug (e.g. `order-service`). You can find it in the dashboard or by running `vela apps list` once authenticated.
+  </Step>
+  <Step title="Set your client secret">
+    Export the environment variable. Never put the secret in `vela.config.json`.
+
+    ```bash
+    export VELA_CLIENT_SECRET="vela_cs_..."
+    ```
+
+    For local dev, add it to your `.env` file (make sure `.env` is in `.gitignore`):
+
+    ```bash
+    # .env
+    VELA_CLIENT_SECRET=vela_cs_...
+    ```
+  </Step>
+  <Step title="Create the schemas directory">
+    ```bash
+    mkdir -p vela/schemas
+    ```
+
+    This is where your schema JSON files will live. Add this directory to git so schemas are tracked alongside your code.
+  </Step>
+  <Step title="Verify">
+    ```bash
+    vela --help
+    ```
+
+    Expected output:
+
+    ```
+    Usage: vela <command> [options]
+
+    Commands:
+      push    Sync local schema files to the remote Vela API
+      pull    Download remote schemas to local JSON files
+      diff    Show pending changes without pushing
+
+    Options:
+      --app <slug>    App slug or ID (overrides vela.config.json)
+      --dir <path>    Schemas directory (overrides vela.config.json)
+      --help          Show this help message
+      --version       Show version
+    ```
+  </Step>
+</Steps>
+
+## Pinning a version in CI
+
+For reproducible CI builds, pin the version in `package.json` instead of using `latest`:
 
 ```json
 {
-  "app": "my-app-slug"
+  "devDependencies": {
+    "@vela-event/cli": "^0.1.0"
+  }
 }
 ```
 
-### 2. Set your client secret
+Then use `npx @vela-event/cli push` in your workflow, which resolves from `node_modules` without a separate global install step.
 
-```bash
-export VELA_CLIENT_SECRET="vela_cs_..."
-```
+## Next steps
 
-### 3. Create your schemas directory
-
-```bash
-mkdir -p vela/schemas
-```
-
-### 4. Verify
-
-```bash
-vela --help
-```
-
-```
-Usage: vela <command> [options]
-
-Commands:
-  push    Sync local schema files to the remote Vela API
-  pull    Download remote schemas to local JSON files
-  diff    Show pending changes without pushing
-
-Options:
-  --app <slug>    App slug or ID (overrides vela.config.json)
-  --dir <path>    Schemas directory (overrides vela.config.json)
-  --help          Show this help message
-  --version       Show version
-```
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/cli/configuration">
+    All config file options and CLI flags.
+  </Card>
+  <Card title="Schema Format" icon="file-code" href="/cli/schema-format">
+    How to write schema JSON files.
+  </Card>
+</CardGroup>

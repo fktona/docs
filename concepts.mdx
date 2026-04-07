@@ -1,93 +1,224 @@
 ---
 title: "Core Concepts"
-description: "Understand the Vela data model and how the pieces fit together"
+description: "Understand the Vela data model — apps, schemas, events, rules, and destinations"
 ---
 
-## Architecture overview
-
-<img
-  src="/images/placeholder-architecture.svg"
-  alt="Vela architecture diagram"
-/>
-
-Vela is a multi-tenant event intelligence platform. Here's how the main entities relate:
+## Data model
 
 ```
 Account
-  └── App (1:many)
-        ├── Schema (1:many) — defines event shapes
-        ├── Event (1:many) — validated, stored payloads
-        ├── Notification Rule (1:many) — conditional alerts
-        └── API Key — used for event ingestion
+  └── App (one account, many apps)
+        ├── API Key          — ingest events into this app
+        ├── Schema (many)    — defines the shape of each event type
+        ├── Event (many)     — validated payloads stored by Vela
+        ├── Notification Rule (many) — conditional alert triggers
+        └── Destination (many)      — Slack / Discord / Email / Webhook
 ```
+
+Everything in Vela is scoped to an **App**. An app is the boundary between your services — one app per microservice, per environment, or per product area. You decide.
+
+---
 
 ## Accounts
 
-An account represents your organization. Each account can own multiple apps, and has a plan that determines limits.
+An account represents your organization. It can own multiple apps and has a plan (Free, Pro, Team) that controls event limits and app quotas. You authenticate with one or more **client secrets** for management operations.
+
+---
 
 ## Apps
 
-An app is an isolated environment that owns everything: schemas, events, rules, and integrations. Think of apps as projects or services.
+An app is an isolated workspace. Everything — schemas, events, rules — belongs to an app.
 
-Each app has:
-- A **name** and **slug** (globally unique identifier)
-- An **API key** (`vela_live_...`) for event ingestion
-- Its own set of schemas, events, and notification rules
+| Property | Description |
+|----------|-------------|
+| **name** | Human-readable label, e.g. `Order Service` |
+| **slug** | URL-safe unique ID, e.g. `order-service` |
+| **API key** | `vela_live_...` — used only for event ingestion |
+
+**Common patterns:**
+- One app per microservice (`payments`, `auth`, `fulfillment`)
+- One app per environment (`order-service-prod`, `order-service-staging`)
+- One app per product (`web-app`, `mobile-app`)
+
+---
 
 ## Schemas
 
-A schema defines the expected shape of an event payload. Every event you ingest must match a registered schema.
+A schema defines the expected shape of an event payload. Every event sent to Vela is validated against the schema for its event name. **Events without a matching schema are rejected with `400`.**
 
-Schemas enforce:
-- **Required fields** -- the event is rejected if they're missing
-- **Field types** -- `string`, `number`, `boolean`, `date`, `enum`, `object`
-- **Validation rules** -- min/max length, regex patterns, enum values
-- **Metadata fields** -- optional contextual data (environment, trace ID, etc.)
+### Why schemas matter
+
+Without schemas, bad data silently enters your system. A schema enforces:
+
+- **Required fields** — the event is rejected if they are missing
+- **Field types** — `string`, `number`, `boolean`, `date`, `enum`, `object`
+- **Validation rules** — min/max length, regex patterns, enum values
+- **Metadata fields** — optional contextual data like environment or trace ID
+
+### Example schema
+
+```json
+{
+  "eventName": "payment.failed",
+  "description": "Fired when a payment attempt fails",
+  "fields": [
+    { "id": "f1", "name": "orderId",     "type": "string", "required": true  },
+    { "id": "f2", "name": "amountCents", "type": "number", "required": true  },
+    { "id": "f3", "name": "reason",      "type": "enum",   "required": true,
+      "enumValues": ["card_declined", "insufficient_funds", "expired_card"] },
+    { "id": "f4", "name": "attemptNum",  "type": "number", "required": false }
+  ],
+  "metadataFields": [
+    { "id": "m1", "name": "environment", "type": "string" },
+    { "id": "m2", "name": "traceId",     "type": "string" }
+  ]
+}
+```
+
+### Field types
+
+| Type | Description | Validation |
+|------|-------------|-----------|
+| `string` | Text | `min`, `max` (length), `pattern` (regex) |
+| `number` | Integer or float | `min`, `max` |
+| `boolean` | `true` or `false` | — |
+| `date` | ISO-8601 date string | — |
+| `enum` | One of a fixed set | `enumValues` array required |
+| `object` | Nested JSON | — |
 
 <Tip>
-  Register schemas before ingesting events. Events without a matching schema are rejected.
+  Use the CLI to manage schemas as JSON files in your repository. Schema changes become PR-reviewable, just like database migrations.
 </Tip>
+
+---
 
 ## Events
 
-Events are structured data payloads sent to Vela. Each event has:
+Events are the core data unit. An event represents something that happened in your system.
 
-| Field | Description |
-|-------|-------------|
-| `event` | Event name (must match a schema's `eventName`) |
-| `data` | Payload validated against the schema's fields |
-| `level` | Severity: `info`, `warning`, `error`, `success` |
-| `customer_id` | Optional customer identifier for filtering |
-| `metadata` | Optional contextual data validated against metadata fields |
-| `timestamp` | Optional ISO-8601 timestamp (defaults to ingestion time) |
+### Event fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `event` | yes | Must match a registered schema's `eventName` |
+| `data` | yes | Payload validated against schema fields |
+| `level` | yes | `info`, `warning`, `error`, or `success` |
+| `customer_id` | no | Optional customer identifier for filtering |
+| `metadata` | no | Optional context validated against `metadataFields` |
+| `timestamp` | no | ISO-8601 — defaults to server ingest time |
 
 ### Event levels
 
-| Level | When to use |
-|-------|-------------|
-| `info` | Normal business events -- order placed, user signed up |
-| `success` | Completed flows -- payment captured, email delivered |
-| `warning` | Degraded but non-critical -- retry attempt, slow response |
-| `error` | Failures requiring attention -- payment failed, webhook error |
+| Level | When to use | Examples |
+|-------|-------------|---------|
+| `info` | Normal business events | `order.placed`, `user.signed_up` |
+| `success` | Completed flows | `payment.captured`, `email.delivered` |
+| `warning` | Degraded, non-critical | `retry.attempt`, `rate_limit_approaching` |
+| `error` | Failures needing attention | `payment.failed`, `webhook.error` |
+
+### Event lifecycle
+
+```
+POST /v1/ingest
+     ↓
+Schema validation — reject 400 if invalid
+     ↓
+Saved to PostgreSQL
+     ↓
+Published to message bus (events.ingested)
+     ↓
+┌─────────────────┬──────────────────────┐
+▼                 ▼                      ▼
+Rules engine   Realtime WebSocket    Future consumers
+evaluates      pushes event to
+conditions     connected dashboards
+     ↓
+Matching rules publish notifications.deliver
+     ↓
+Delivery sends to Slack / Discord / Email / Webhook
+     ↓
+Attempt logged: status, response code, error
+     ↓
+On failure: retry up to 3x (30s delay) → DLQ
+```
+
+---
 
 ## Notification Rules
 
-Rules watch for events matching a name and optional conditions, then deliver alerts through configured destinations.
+A rule watches for events of a specific type and fires when conditions match. Evaluation is real-time — rules trigger as soon as an event is ingested.
 
-A rule has:
-- **Event name** -- which events to watch
-- **Conditions** -- optional field-level filters (e.g., `amountCents > 10000`)
-- **Actions** -- where to send the alert (Slack, Discord, email)
+### Rule fields
 
-Destinations are configured in the [dashboard](https://app.vela.dev) -- the SDK/API just references them by ID.
+| Field | Description |
+|-------|-------------|
+| `name` | Human-readable label |
+| `eventName` | Which event type to watch |
+| `conditions` | Optional payload filters — all must pass |
+| `actions` | One or more delivery targets |
+| `enabled` | Toggle on/off without deleting |
+
+### Conditions
+
+A rule with no conditions fires for every matching event. Conditions filter by payload fields:
+
+```json
+{
+  "conditions": [
+    { "field": "amountCents",    "operator": "gt",       "value": 10000 },
+    { "field": "currency",       "operator": "eq",       "value": "USD" },
+    { "field": "reason",         "operator": "in",       "value": ["card_declined", "fraud"] },
+    { "field": "customerEmail",  "operator": "contains", "value": "@enterprise.com" }
+  ]
+}
+```
+
+| Operator | Description |
+|----------|-------------|
+| `eq` / `neq` | Equals / not equals |
+| `gt` / `gte` | Greater than / greater than or equal |
+| `lt` / `lte` | Less than / less than or equal |
+| `contains` | String contains substring |
+| `in` / `not_in` | Value is in / not in array |
+
+### Actions
+
+Each action points to a destination. A single rule can have multiple actions — alert Slack and email at the same time.
+
+```json
+{
+  "actions": [
+    { "id": "a1", "destinationId": "dest-uuid", "channel": "slack",   "enabled": true  },
+    { "id": "a2", "destinationId": "dest-uuid", "channel": "email",   "enabled": true  },
+    { "id": "a3", "destinationId": "dest-uuid", "channel": "discord", "enabled": false }
+  ]
+}
+```
+
+---
+
+## Destinations
+
+Destinations are delivery targets configured in the dashboard. Create them once, then reference by ID in rules.
+
+| Type | Description |
+|------|-------------|
+| `slack` | Slack incoming webhook — formatted block message |
+| `discord` | Discord webhook — color-coded embed |
+| `email` | Email via Resend API |
+| `webhook` | Custom HTTP endpoint — POSTs full event payload as JSON |
+
+Destination credentials are encrypted at rest with AES-256-GCM.
+
+---
 
 ## Authentication
 
-Vela uses two types of credentials:
+| Credential | Format | Purpose | Header |
+|------------|--------|---------|--------|
+| **Client secret** | `vela_cs_...` | Management API | `Authorization: Bearer` |
+| **API key** | `vela_live_...` | Event ingestion only | `x-api-key` |
 
-| Credential | Format | Used for | Auth method |
-|------------|--------|----------|-------------|
-| Client secret | `vela_cs_...` | Management API (apps, schemas, rules) | `Authorization: Bearer` header |
-| API key | `vela_live_...` | Event ingestion | `x-api-key` header |
+The separation is intentional. Your API key travels with every ingest call — if it leaks, an attacker can only send events, not read or modify your data.
 
-Both are generated in the [Vela dashboard](https://app.vela.dev). See the [credentials guide](/credentials/overview) for details.
+See the [credentials guide](/credentials/overview).

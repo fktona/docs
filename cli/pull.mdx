@@ -1,9 +1,9 @@
 ---
 title: "vela pull"
-description: "Download remote schemas to local JSON files"
+description: "Download remote schemas from the Vela API and write them as local JSON files."
 ---
 
-Downloads all schemas from the Vela API and writes them as local JSON files. Server-only fields (`id`, `appId`, `createdAt`, `updatedAt`) are stripped.
+`vela pull` fetches all schemas for your app from the Vela API and writes them as local JSON files. Server-only fields (`id`, `appId`, `createdAt`, `updatedAt`) are stripped so the files match the expected local format.
 
 ## Usage
 
@@ -14,32 +14,86 @@ vela pull
 ## Example output
 
 ```
-✓ Pulled order.placed
-✓ Pulled payment.failed
+i Fetching schemas for app "order-service"...
 
-i Pulled 2 schema(s) to ./vela/schemas
+✓ Pulled order.placed      → vela/schemas/order.placed.json
+✓ Pulled payment.failed    → vela/schemas/payment.failed.json
+✓ Pulled user.signed-up    → vela/schemas/user.signed-up.json
+
+i Pulled 3 schema(s) to ./vela/schemas
 ```
 
-## What happens
+## What happens step by step
 
-1. Fetches all schemas from the Vela API for your app
+1. Connects to the Vela API and fetches all schemas for your app
 2. Writes each schema to `{schemasDir}/{eventName}.json`
-3. Strips server-only fields so the file matches the expected local format
-4. Creates the schemas directory if it doesn't exist
+3. Strips server-generated fields (`id`, `appId`, `createdAt`, `updatedAt`) so files are clean and pushable
+4. Creates the schemas directory if it doesn't exist yet
+5. Overwrites existing local files — uncommitted local changes are lost
+
+<Warning>
+  `vela pull` overwrites existing local files without a prompt. If you have unsaved local changes, commit or stash them before pulling.
+</Warning>
+
+## When to use pull
+
+**First-time setup** — if schemas already exist in the dashboard (created manually or by another team member), pull them before you start editing locally:
+
+```bash
+mkdir -p vela/schemas
+vela pull
+git add vela/schemas/
+git commit -m "chore: pull initial schemas from Vela"
+```
+
+**After dashboard edits** — if someone modified a schema in the dashboard directly, pull to bring local files back in sync before the next push:
+
+```bash
+vela pull
+git diff vela/schemas/    # review what changed
+git add -p vela/schemas/  # stage selectively
+git commit -m "sync: pull schema changes from dashboard"
+```
+
+**Onboarding a new developer** — instead of manually creating schema files, pull directly from the remote app:
+
+```bash
+git clone https://github.com/your-org/your-service
+cd your-service
+cp .env.sample .env && vim .env  # set VELA_CLIENT_SECRET
+vela pull  # get schemas from remote
+```
 
 ## Options
 
-```bash
-vela pull --app production-app --dir ./schemas/prod
-```
-
 | Flag | Description |
 |------|-------------|
-| `--app <slug>` | Override the app from `vela.config.json` |
-| `--dir <path>` | Override the schemas directory |
+| `--app <slug>` | Override the app slug from `vela.config.json` |
+| `--dir <path>` | Override the schemas directory path |
 
-## Use cases
+```bash
+# Pull from a specific app
+vela pull --app order-service-production
 
-- **Initial setup** -- pull existing schemas when adopting the CLI for the first time
-- **Sync after dashboard edits** -- if someone modifies schemas in the dashboard, pull to keep local files in sync
-- **Backup** -- periodically pull schemas as a safety net
+# Write to a custom directory
+vela pull --dir ./src/events/schemas
+```
+
+## Pulled file format
+
+The pulled files match the format expected by `vela push`. A pulled `order.placed.json` looks like:
+
+```json
+{
+  "eventName": "order.placed",
+  "description": "Fired when a customer completes checkout",
+  "fields": [
+    { "id": "f1", "name": "orderId",     "type": "string", "required": true },
+    { "id": "f2", "name": "amountCents", "type": "number", "required": true },
+    { "id": "f3", "name": "currency",    "type": "enum",   "required": true,
+      "enumValues": ["USD", "EUR", "GBP"] }
+  ]
+}
+```
+
+You can edit this file and push it back without any format changes.

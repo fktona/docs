@@ -1,9 +1,9 @@
 ---
 title: "vela push"
-description: "Sync local schema files to the remote Vela API"
+description: "Sync local schema files to the remote Vela API — creates new schemas and updates changed ones."
 ---
 
-Reads local schema files, compares them against the remote API, and creates or updates schemas that have changed.
+`vela push` reads your local schema files, compares them against the remote API, and creates or updates schemas that have changed. Unchanged schemas are skipped.
 
 ## Usage
 
@@ -15,41 +15,90 @@ vela push
 
 ```
 i Found 3 local schema(s) in ./vela/schemas
-✓ Created order.cancelled
-✓ Updated order.placed
+
+✓ Created   order.cancelled
+  + field "reason" (enum, required)
+  + field "refundCents" (number, optional)
+
+✓ Updated   order.placed
   ~ description changed
   + field "currency" (enum, required)
 
-i Created 1, Updated 1, Unchanged 1
+  order.shipped  → no change (skipped)
+
+i Done: 1 created, 1 updated, 1 unchanged
 ```
 
-## What happens
+## What happens step by step
 
 1. Reads all `.json` files from your schemas directory
-2. Fetches all existing schemas from the Vela API
+2. Fetches all existing schemas from the Vela API for your app
 3. Compares local vs. remote by `eventName`
-4. **Creates** schemas that don't exist remotely
-5. **Updates** schemas that have changed (fields, description, metadata)
-6. **Skips** schemas that are identical
+4. **Creates** schemas that don't exist remotely yet
+5. **Updates** schemas where fields, description, or metadata have changed
+6. **Skips** schemas that are identical to remote — no API call is made
 
 ## Options
 
-```bash
-vela push --app staging-app --dir ./schemas/staging
-```
-
 | Flag | Description |
 |------|-------------|
-| `--app <slug>` | Override the app from `vela.config.json` |
-| `--dir <path>` | Override the schemas directory |
+| `--app <slug>` | Override the app slug from `vela.config.json` |
+| `--dir <path>` | Override the schemas directory path |
+
+```bash
+# Push to a staging app
+vela push --app order-service-staging
+
+# Push schemas from a different directory
+vela push --dir ./schemas/v2
+```
 
 ## Error handling
 
-If a schema fails to create or update, the error is shown inline and the CLI continues with remaining schemas:
+If a schema fails to create or update, the error is shown inline and the CLI continues with the remaining schemas:
 
 ```
-✗ Failed order.placed: Validation error: field "orderId" type mismatch
-✓ Created payment.failed
+✗ Failed    order.placed
+  Validation error: field "orderId" has type mismatch (expected string, got number)
 
-i Created 1, Updated 0, Unchanged 0
+✓ Created   payment.failed
+
+i Done: 1 created, 0 updated, 0 unchanged, 1 failed
 ```
+
+The exit code is `1` if any schema failed.
+
+## CI/CD deployment
+
+Push schemas as part of your deployment pipeline, after your app code is deployed:
+
+```yaml
+# .github/workflows/deploy.yml
+jobs:
+  deploy:
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install CLI
+        run: npm install -g @vela-event/cli
+
+      - name: Push schemas
+        run: vela push
+        env:
+          VELA_CLIENT_SECRET: ${{ secrets.VELA_CLIENT_SECRET }}
+```
+
+<Tip>
+  Run `vela diff` before `vela push` in CI to get a clear audit trail of what changed in each deployment.
+</Tip>
+
+## Removing schemas
+
+`vela push` does not delete remote schemas that have no local counterpart. Deletion must be done explicitly through the dashboard or the Management API. This is intentional — accidental file deletion should not automatically destroy production event schemas.
+
+## Dry run
+
+To preview what `vela push` would do without making any changes, use `vela diff` instead.

@@ -5,15 +5,22 @@ description: "Send your first event to Vela in under 5 minutes"
 
 ## Prerequisites
 
-- A Vela account with an app created in the [dashboard](https://app.vela.dev)
-- Your **client secret** (`vela_cs_...`) and **API key** (`vela_live_...`)
+- A running Vela instance — [self-host locally](https://github.com/vela-event/vela#getting-started) or use the cloud
+- A **client secret** (`vela_cs_...`) — to manage schemas and rules
+- An **API key** (`vela_live_...`) — to ingest events
 
-## Step 1: Install an SDK
+Both credentials are generated from the dashboard. See the [credentials guide](/credentials/overview).
+
+## Step 1: Install the SDK
 
 <CodeGroup>
 
 ```bash npm
-npm install @vela/sdk
+npm install @vela-event/sdk
+```
+
+```bash pnpm
+pnpm add @vela-event/sdk
 ```
 
 ```bash pip
@@ -22,26 +29,42 @@ pip install vela-sdk
 
 </CodeGroup>
 
-## Step 2: Register an event schema
+## Step 2: Set credentials as environment variables
 
-Before ingesting events, you need to define their shape. This tells Vela what fields to expect and validate.
+Never hardcode credentials in your source files.
+
+```bash
+export VELA_CLIENT_SECRET="vela_cs_..."
+export VELA_API_KEY="vela_live_..."
+```
+
+For local dev, put these in a `.env` file and load with `dotenv`.
+
+## Step 3: Register an event schema
+
+Schemas tell Vela the exact shape of each event type. An event without a matching schema is rejected at ingest time with a `400` error.
 
 <CodeGroup>
 
 ```typescript TypeScript
-import { VelaManagementClient } from '@vela/sdk';
+import { VelaManagementClient } from '@vela-event/sdk';
 
-const client = new VelaManagementClient(process.env.VELA_CLIENT_SECRET);
-const appRes = client.forApp('my-app');
+const client = new VelaManagementClient(process.env.VELA_CLIENT_SECRET!);
+const app = client.forApp('your-app-slug');
 
-await appRes.schemas.create({
+await app.schemas.create({
   eventName: 'order.placed',
-  description: 'Emitted when a checkout completes',
+  description: 'Fired when a customer completes checkout',
   fields: [
-    { id: 'fld-order-id', name: 'orderId', type: 'string', required: true },
-    { id: 'fld-amount', name: 'amountCents', type: 'number', required: true },
+    { id: 'f1', name: 'orderId',      type: 'string', required: true  },
+    { id: 'f2', name: 'amountCents',  type: 'number', required: true  },
+    { id: 'f3', name: 'currency',     type: 'enum',   required: true,
+      enumValues: ['USD', 'EUR', 'GBP'] },
+    { id: 'f4', name: 'customerEmail',type: 'string', required: false },
   ],
 });
+
+console.log('Schema registered.');
 ```
 
 ```python Python
@@ -49,52 +72,66 @@ import os
 from vela import VelaManagementClient
 
 client = VelaManagementClient(os.environ["VELA_CLIENT_SECRET"])
-app_res = client.for_app("my-app")
+app = client.for_app("your-app-slug")
 
-app_res.schemas.create({
+app.schemas.create({
     "event_name": "order.placed",
-    "description": "Emitted when a checkout completes",
+    "description": "Fired when a customer completes checkout",
     "fields": [
-        {"id": "fld-order-id", "name": "orderId", "type": "string", "required": True},
-        {"id": "fld-amount", "name": "amountCents", "type": "number", "required": True},
+        {"id": "f1", "name": "orderId",       "type": "string", "required": True},
+        {"id": "f2", "name": "amountCents",   "type": "number", "required": True},
+        {"id": "f3", "name": "currency",      "type": "enum",   "required": True,
+         "enum_values": ["USD", "EUR", "GBP"]},
+        {"id": "f4", "name": "customerEmail", "type": "string", "required": False},
     ],
 })
+
+print("Schema registered.")
 ```
 
 ```bash CLI
-# Or use the CLI to define schemas as files
 cat > vela/schemas/order.placed.json << 'EOF'
 {
   "eventName": "order.placed",
-  "description": "Emitted when a checkout completes",
+  "description": "Fired when a customer completes checkout",
   "fields": [
-    { "id": "fld-order-id", "name": "orderId", "type": "string", "required": true },
-    { "id": "fld-amount", "name": "amountCents", "type": "number", "required": true }
+    { "id": "f1", "name": "orderId",       "type": "string", "required": true },
+    { "id": "f2", "name": "amountCents",   "type": "number", "required": true },
+    { "id": "f3", "name": "currency",      "type": "enum",   "required": true,
+      "enumValues": ["USD", "EUR", "GBP"] },
+    { "id": "f4", "name": "customerEmail", "type": "string", "required": false }
   ]
 }
 EOF
 
 vela push
+# ✓ Created order.placed
 ```
 
 </CodeGroup>
 
-## Step 3: Send an event
+## Step 4: Send your first event
 
 <CodeGroup>
 
 ```typescript TypeScript
-import { VelaIngestClient } from '@vela/sdk';
+import { VelaIngestClient } from '@vela-event/sdk';
 
-const ingest = new VelaIngestClient(process.env.VELA_API_KEY);
+const ingest = new VelaIngestClient(process.env.VELA_API_KEY!);
 
 const result = await ingest.ingest({
   event: 'order.placed',
-  data: { orderId: 'ord_abc123', amountCents: 4999 },
+  data: {
+    orderId: 'ord_abc123',
+    amountCents: 4999,
+    currency: 'USD',
+    customerEmail: 'jane@example.com',
+  },
   level: 'info',
 });
 
-console.log(result.accepted); // 1
+console.log(result.accepted);      // 1
+console.log(result.events[0].id);  // evt_01j9...
 ```
 
 ```python Python
@@ -104,28 +141,72 @@ from vela import VelaIngestClient
 with VelaIngestClient(os.environ["VELA_API_KEY"]) as ingest:
     result = ingest.ingest({
         "event": "order.placed",
-        "data": {"orderId": "ord_abc123", "amountCents": 4999},
+        "data": {
+            "orderId": "ord_abc123",
+            "amountCents": 4999,
+            "currency": "USD",
+            "customerEmail": "jane@example.com",
+        },
         "level": "info",
     })
-    print(result.accepted)  # 1
+    print(result.accepted)      # 1
+    print(result.events[0].id)  # evt_01j9...
+```
+
+```bash curl
+curl -X POST http://localhost:3000/v1/ingest \
+  -H "x-api-key: vela_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "order.placed",
+    "data": {
+      "orderId": "ord_abc123",
+      "amountCents": 4999,
+      "currency": "USD"
+    },
+    "level": "info"
+  }'
 ```
 
 </CodeGroup>
 
-## Step 4: Set up a notification rule (optional)
+A successful ingest returns `201`:
 
-Get alerted when specific events occur:
+```json
+{
+  "accepted": 1,
+  "events": [
+    { "id": "evt_01j9...", "eventName": "order.placed", "createdAt": "2024-06-01T12:00:00Z" }
+  ]
+}
+```
+
+If a required field is missing, you get `400`:
+
+```json
+{
+  "statusCode": 400,
+  "error": "Bad Request",
+  "message": "Event validation failed: field 'amountCents' is required"
+}
+```
+
+## Step 5: Create a notification rule (optional)
+
+Notification rules decide what events trigger alerts and where they go. Destinations (Slack, Discord, Email) are configured in the dashboard first — then referenced by ID in the rule.
 
 <CodeGroup>
 
 ```typescript TypeScript
-await appRes.notificationRules.create({
-  name: 'Alert on payment failure',
-  eventName: 'payment.failed',
-  conditions: [],
+await app.notificationRules.create({
+  name: 'Alert on high-value orders',
+  eventName: 'order.placed',
+  conditions: [
+    { field: 'amountCents', operator: 'gt', value: 10000 },
+  ],
   actions: [
     {
-      id: 'action-1',
+      id: 'action-slack',
       destinationId: 'dest-uuid-from-dashboard',
       channel: 'slack',
       enabled: true,
@@ -135,13 +216,15 @@ await appRes.notificationRules.create({
 ```
 
 ```python Python
-app_res.notification_rules.create({
-    "name": "Alert on payment failure",
-    "event_name": "payment.failed",
-    "conditions": [],
+app.notification_rules.create({
+    "name": "Alert on high-value orders",
+    "event_name": "order.placed",
+    "conditions": [
+        {"field": "amountCents", "operator": "gt", "value": 10000},
+    ],
     "actions": [
         {
-            "id": "action-1",
+            "id": "action-slack",
             "destination_id": "dest-uuid-from-dashboard",
             "channel": "slack",
             "enabled": True,
@@ -152,24 +235,21 @@ app_res.notification_rules.create({
 
 </CodeGroup>
 
-## Next steps
+Now every `order.placed` event with `amountCents > 10000` will post a Slack message automatically — with retries and a dead-letter queue built in.
+
+## What's next
 
 <CardGroup cols={2}>
-
-<Card title="TypeScript SDK" icon="js" href="/sdks/typescript/overview">
-  Full TypeScript SDK reference.
-</Card>
-
-<Card title="Python SDK" icon="python" href="/sdks/python/overview">
-  Full Python SDK reference.
-</Card>
-
-<Card title="CLI" icon="terminal" href="/cli/overview">
-  Manage schemas as code with the Vela CLI.
-</Card>
-
-<Card title="Schemas" icon="database" href="/sdks/typescript/schemas">
-  Learn about field types and validation.
-</Card>
-
+  <Card title="Core Concepts" icon="lightbulb" href="/concepts">
+    Understand apps, schemas, events, and rules in depth.
+  </Card>
+  <Card title="TypeScript SDK" icon="js" href="/sdks/typescript/overview">
+    Batch ingestion, error handling, all resource methods.
+  </Card>
+  <Card title="CLI" icon="terminal" href="/cli/overview">
+    Manage schemas as code with diff, push, and pull.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Direct HTTP API docs with request/response examples.
+  </Card>
 </CardGroup>

@@ -1,85 +1,264 @@
 ---
 title: "Management Client"
-description: "Manage apps, schemas, and notification rules with VelaManagementClient"
+description: "Manage apps, schemas, notification rules, and API keys with VelaManagementClient — full method reference."
 ---
 
-The `VelaManagementClient` handles all account-level operations. It authenticates with your **client secret** (`vela_cs_...`).
+`VelaManagementClient` handles all account-level operations. It authenticates with your **client secret** (`vela_cs_...`) and has full access to create apps, define schemas, configure notification rules, and rotate API keys.
 
 ## Constructor
 
 ```typescript
-import { VelaManagementClient } from '@vela/sdk';
+import { VelaManagementClient } from '@vela-event/sdk';
 
-const client = new VelaManagementClient(clientSecret: string, options?: VelaClientOptions);
-```
-
-```typescript
-const client = new VelaManagementClient(process.env.VELA_CLIENT_SECRET);
+const client = new VelaManagementClient(process.env.VELA_CLIENT_SECRET!);
 ```
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `baseUrl` | `string` | `https://api.vela.dev` | API base URL |
-| `timeout` | `number` | `30000` | Request timeout in ms |
-| `fetchImpl` | `typeof fetch` | `globalThis.fetch` | Custom fetch implementation |
+| `baseUrl` | `string` | `https://api.velahq.xyz` | API base URL. Override for self-hosted instances. |
+| `timeout` | `number` | `30000` | Request timeout in milliseconds. |
+| `fetchImpl` | `typeof fetch` | `globalThis.fetch` | Custom fetch implementation. |
 
-## Top-level resources
+## Apps
 
-### Apps
+### List all apps
 
 ```typescript
 const apps = await client.apps.list();
-const { app, apiKey } = await client.apps.create({ name: 'My App' });
+
+for (const app of apps) {
+  console.log(`${app.name} (${app.slug}) — key hint: ${app.apiKeyHint}`);
+  // "Order Service (order-service) — key hint: vela_live_abc1..."
+}
 ```
 
-See the full [Apps reference](/sdks/typescript/apps).
+### Create an app
+
+```typescript
+const { app, apiKey } = await client.apps.create({ name: 'Order Service' });
+
+console.log(app.slug);  // "order-service"
+console.log(apiKey);    // "vela_live_..." — shown only once, store immediately
+```
+
+<Warning>
+  The full API key is only returned at creation time. Store it in your secret manager immediately — Vela only stores a hashed version and cannot recover the original.
+</Warning>
+
+### Rotate an API key
+
+```typescript
+const { app, apiKey } = await client.apps.rotateKey('order-service');
+
+console.log(apiKey); // new key — update all services using the old key
+// The old key is immediately invalid after this call
+```
+
+### Delete an app
+
+```typescript
+await client.apps.delete('order-service');
+```
 
 ## App-scoped resources
 
-Schemas, notification rules, and events are scoped to a specific app. Use `forApp()` to get scoped resource handles:
+Schemas, notification rules, and events are scoped to a specific app. Use `forApp()` to get resource handles for a particular app:
 
 ```typescript
-const appRes = client.forApp('my-app'); // accepts UUID or slug
-
-// Now use scoped resources:
-const schemas = await appRes.schemas.list();
-const rules = await appRes.notificationRules.list();
-const events = await appRes.events.list();
+const app = client.forApp('order-service'); // accepts slug or UUID
 ```
 
-| Resource | Description |
-|----------|-------------|
-| `appRes.schemas` | [Event schemas](/sdks/typescript/schemas) |
-| `appRes.notificationRules` | [Notification rules](/sdks/typescript/notification-rules) |
-| `appRes.events` | [Event listing](/sdks/typescript/events) |
+All methods on `app.schemas`, `app.notificationRules`, and `app.events` operate on that specific app.
 
-## Complete example
+## Schemas
+
+### List schemas
 
 ```typescript
-import { VelaManagementClient } from '@vela/sdk';
+const schemas = await app.schemas.list();
 
-const client = new VelaManagementClient(process.env.VELA_CLIENT_SECRET);
+for (const schema of schemas) {
+  console.log(`${schema.eventName} — ${schema.fields.length} fields`);
+}
+```
 
-// Create an app
-const { app, apiKey } = await client.apps.create({ name: 'Order Service' });
+### Get a schema
 
-// Define a schema
-const appRes = client.forApp(app.slug);
-await appRes.schemas.create({
+```typescript
+const schema = await app.schemas.get('order.placed');
+console.log(schema.fields);
+```
+
+### Create a schema
+
+```typescript
+await app.schemas.create({
   eventName: 'order.placed',
+  description: 'Fired when a customer completes checkout',
   fields: [
-    { id: 'f1', name: 'orderId', type: 'string', required: true },
+    { id: 'f1', name: 'orderId',     type: 'string', required: true },
     { id: 'f2', name: 'amountCents', type: 'number', required: true },
+    { id: 'f3', name: 'currency',    type: 'enum',   required: true,
+      enumValues: ['USD', 'EUR', 'GBP'] },
+    { id: 'f4', name: 'customerEmail', type: 'string', required: false },
+  ],
+  metadataFields: [
+    { id: 'm1', name: 'environment', type: 'string' },
+    { id: 'm2', name: 'traceId',     type: 'string' },
+  ],
+});
+```
+
+### Update a schema
+
+```typescript
+await app.schemas.update('order.placed', {
+  description: 'Updated description',
+  fields: [
+    { id: 'f1', name: 'orderId',     type: 'string', required: true },
+    { id: 'f2', name: 'amountCents', type: 'number', required: true },
+    { id: 'f3', name: 'currency',    type: 'enum',   required: true,
+      enumValues: ['USD', 'EUR', 'GBP', 'CAD'] }, // added CAD
+    { id: 'f4', name: 'customerEmail', type: 'string', required: false },
+    { id: 'f5', name: 'promoCode',   type: 'string', required: false }, // new field
+  ],
+});
+```
+
+### Delete a schema
+
+```typescript
+await app.schemas.delete('order.placed');
+```
+
+## Notification rules
+
+### List rules
+
+```typescript
+const rules = await app.notificationRules.list();
+```
+
+### Create a rule
+
+```typescript
+await app.notificationRules.create({
+  name: 'Alert on high-value orders',
+  eventName: 'order.placed',
+  conditions: [
+    { field: 'amountCents', operator: 'gt', value: 10000 },
+    { field: 'currency',    operator: 'eq', value: 'USD' },
+  ],
+  actions: [
+    {
+      id: 'action-slack',
+      destinationId: 'dest-uuid-from-dashboard',
+      channel: 'slack',
+      enabled: true,
+    },
+    {
+      id: 'action-email',
+      destinationId: 'dest-uuid-from-dashboard',
+      channel: 'email',
+      enabled: true,
+    },
+  ],
+});
+```
+
+### Update a rule
+
+```typescript
+await app.notificationRules.update('rule-uuid', {
+  name: 'Alert on high-value orders (updated)',
+  conditions: [
+    { field: 'amountCents', operator: 'gt', value: 20000 }, // raised threshold
+  ],
+});
+```
+
+### Toggle a rule on/off
+
+```typescript
+await app.notificationRules.update('rule-uuid', { enabled: false });
+await app.notificationRules.update('rule-uuid', { enabled: true });
+```
+
+### Delete a rule
+
+```typescript
+await app.notificationRules.delete('rule-uuid');
+```
+
+## Events (read-only)
+
+### List events
+
+```typescript
+const events = await app.events.list({
+  eventName: 'order.placed',
+  level: 'error',
+  customerId: 'cust_42',
+  from: '2024-06-01T00:00:00Z',
+  to: '2024-06-30T23:59:59Z',
+  limit: 50,
+});
+
+for (const event of events) {
+  console.log(`${event.id} — ${event.eventName} at ${event.createdAt}`);
+}
+```
+
+### Get a single event
+
+```typescript
+const event = await app.events.get('evt_01j9abc...');
+console.log(event.data);     // the payload
+console.log(event.metadata); // the metadata
+```
+
+## Complete setup example
+
+```typescript
+import { VelaManagementClient } from '@vela-event/sdk';
+
+const client = new VelaManagementClient(process.env.VELA_CLIENT_SECRET!);
+
+// 1. Create the app
+const { app, apiKey } = await client.apps.create({ name: 'Payments Service' });
+console.log('API key (save this now):', apiKey);
+
+// 2. Define schemas
+const svc = client.forApp(app.slug);
+
+await svc.schemas.create({
+  eventName: 'payment.captured',
+  fields: [
+    { id: 'f1', name: 'paymentId',   type: 'string', required: true },
+    { id: 'f2', name: 'amountCents', type: 'number', required: true },
+    { id: 'f3', name: 'currency',    type: 'enum',   required: true,
+      enumValues: ['USD', 'EUR', 'GBP'] },
   ],
 });
 
-// Set up alerts
-await appRes.notificationRules.create({
-  name: 'Alert on errors',
-  eventName: 'order.placed',
+await svc.schemas.create({
+  eventName: 'payment.failed',
+  fields: [
+    { id: 'f1', name: 'paymentId', type: 'string', required: true },
+    { id: 'f2', name: 'reason',    type: 'enum',   required: true,
+      enumValues: ['card_declined', 'insufficient_funds', 'expired_card'] },
+  ],
+});
+
+// 3. Set up alert rule
+await svc.notificationRules.create({
+  name: 'Alert on payment failures',
+  eventName: 'payment.failed',
   conditions: [],
   actions: [
-    { id: 'a1', destinationId: '<dest-id>', channel: 'slack', enabled: true },
+    { id: 'a1', destinationId: '<slack-dest-id>', channel: 'slack', enabled: true },
   ],
 });
+
+console.log('Setup complete.');
 ```

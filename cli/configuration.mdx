@@ -1,55 +1,121 @@
 ---
 title: "Configuration"
-description: "Configure the Vela CLI"
+description: "Configure the Vela CLI with a config file and environment variables."
 ---
 
 ## Config file
 
-Create `vela.config.json` in your project root:
+Create `vela.config.json` in your project root. The CLI looks for this file in the current directory when any command is run.
 
 ```json
 {
-  "app": "my-app-slug",
+  "app": "order-service",
   "schemasDir": "./vela/schemas"
 }
 ```
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `app` | yes | -- | App slug or UUID |
-| `schemasDir` | no | `./vela/schemas` | Directory containing schema JSON files |
-| `clientSecret` | no | -- | Client secret. Prefer the env var instead |
+| `app` | yes | — | App slug or UUID. Find it in the dashboard or from `vela.config.json` after `vela pull`. |
+| `schemasDir` | no | `./vela/schemas` | Path to the directory containing your schema JSON files. Relative to the config file. |
+| `baseUrl` | no | `https://api.velahq.xyz` | Override the API base URL. Useful for self-hosted instances. |
+
+<Warning>
+  Do not put `clientSecret` in `vela.config.json`. If you commit this file (you should), the secret would be exposed in your repository. Use the environment variable instead.
+</Warning>
 
 ## Authentication
 
-The `VELA_CLIENT_SECRET` environment variable takes precedence over the config file:
+Set the `VELA_CLIENT_SECRET` environment variable. It takes precedence over any other configuration.
 
 ```bash
 export VELA_CLIENT_SECRET="vela_cs_..."
 ```
 
-<Warning>
-  Do not commit secrets to `vela.config.json`. Use environment variables or your CI's secret store.
-</Warning>
+For local development, load it from a `.env` file using a tool like `dotenv-cli`:
+
+```bash
+dotenv -- vela push
+```
+
+For CI/CD, inject it as a secret:
+
+```yaml
+# GitHub Actions
+- name: Push schemas
+  run: npx @vela-event/cli push
+  env:
+    VELA_CLIENT_SECRET: ${{ secrets.VELA_CLIENT_SECRET }}
+```
 
 ## CLI flags
 
-All commands accept flags that override the config file:
+Every command accepts flags that override the config file. This is useful when managing multiple apps or environments from the same repository.
 
 | Flag | Description |
 |------|-------------|
-| `--app <slug>` | Override the app slug/UUID |
+| `--app <slug>` | Override the app slug or UUID |
 | `--dir <path>` | Override the schemas directory path |
 
 ```bash
-vela push --app staging-app --dir ./schemas/staging
+# Push to staging
+vela push --app order-service-staging --dir ./schemas
+
+# Push to production
+vela push --app order-service-prod --dir ./schemas
 ```
 
 ## Precedence
 
-Settings are resolved in this order (highest wins):
+Settings are resolved in this order — highest wins:
 
-1. CLI flags (`--app`, `--dir`)
-2. Environment variables (`VELA_CLIENT_SECRET`)
-3. `vela.config.json` file
-4. Defaults (`schemasDir: ./vela/schemas`)
+1. **CLI flags** (`--app`, `--dir`)
+2. **Environment variables** (`VELA_CLIENT_SECRET`)
+3. **`vela.config.json`** file
+4. **Defaults** (`schemasDir: ./vela/schemas`)
+
+## Self-hosted configuration
+
+If you're running Vela on your own infrastructure, override the base URL:
+
+```json
+{
+  "app": "order-service",
+  "baseUrl": "https://vela.your-domain.com"
+}
+```
+
+Or use an environment variable:
+
+```bash
+VELA_BASE_URL=https://vela.your-domain.com vela push
+```
+
+## Multi-environment setup
+
+For projects with separate staging and production apps, use a single schemas directory with environment-specific config files or flags:
+
+```
+vela/
+  schemas/           ← same schemas for all envs
+    order.placed.json
+    payment.failed.json
+  config.staging.json
+  config.prod.json
+```
+
+```json
+// config.staging.json
+{
+  "app": "order-service-staging",
+  "schemasDir": "./vela/schemas"
+}
+```
+
+```bash
+# Push to staging
+vela push --config vela/config.staging.json
+
+# Push to production
+vela push --config vela/config.prod.json
+```

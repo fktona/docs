@@ -1,9 +1,9 @@
 ---
 title: "vela diff"
-description: "Preview schema changes without pushing"
+description: "Preview schema changes before pushing — see exactly what would be created or updated without touching the remote API."
 ---
 
-Shows what would change without making any mutations. Useful for reviewing before pushing and as a CI gate.
+`vela diff` compares your local schema files against the remote API and prints a summary of what would change. It makes no mutations.
 
 ## Usage
 
@@ -15,41 +15,68 @@ vela diff
 
 ```
 i Found 3 local schema(s) in ./vela/schemas
+
 ! order.cancelled  → create
-  + field "reason" (string, required)
+  + field "reason" (enum, required)
+    enumValues: card_error, fraud, customer_request
   + field "refundCents" (number, optional)
+
 ! order.placed  → update
   ~ description changed
   + field "currency" (enum, required)
-✓ user.signup  → no change
+    enumValues: USD, EUR, GBP
 
-i 1 to create, 1 to update, 1 unchanged
+✓ payment.failed  → no change
+
+i Summary: 1 to create, 1 to update, 1 unchanged
 ```
+
+### Legend
+
+| Symbol | Meaning |
+|--------|---------|
+| `!` | Schema has pending changes (will be created or updated) |
+| `✓` | Schema is identical to remote — no action needed |
+| `+` | Field will be added |
+| `-` | Field will be removed |
+| `~` | Field or description has changed |
 
 ## Exit codes
 
 | Code | Meaning |
 |------|---------|
-| `0` | All schemas are in sync |
-| `1` | There are pending changes |
+| `0` | All schemas are in sync — no changes pending |
+| `1` | Changes detected — one or more schemas would be created or updated |
+
+Exit code `1` does **not** mean an error occurred. It means drift was detected. Use this in CI to fail the build when schemas are out of sync.
 
 ## CI usage
 
-Use `vela diff` as a gate in your CI pipeline to catch schema drift:
+Use `vela diff` as a gate in your pipeline to catch schema drift before it reaches production:
 
 ```bash
-vela diff || echo "Schemas out of sync -- run 'vela push'"
+# Fail CI if schemas are out of sync
+vela diff
+echo "exit code: $?"
+```
+
+Or with a descriptive message:
+
+```bash
+vela diff || { echo "Schema drift detected — run 'vela push' to sync"; exit 1; }
 ```
 
 ### GitHub Actions example
 
 ```yaml
+# .github/workflows/ci.yml
 - name: Check schema drift
-  run: |
-    npx @vela/cli diff
+  run: npx @vela-event/cli diff
   env:
     VELA_CLIENT_SECRET: ${{ secrets.VELA_CLIENT_SECRET }}
 ```
+
+This job will fail if any schema is out of sync, blocking the PR from merging until schemas are pushed.
 
 ## Options
 
@@ -57,3 +84,29 @@ vela diff || echo "Schemas out of sync -- run 'vela push'"
 |------|-------------|
 | `--app <slug>` | Override the app from `vela.config.json` |
 | `--dir <path>` | Override the schemas directory |
+
+```bash
+# Diff against a specific app
+vela diff --app order-service-staging
+
+# Diff a different schemas directory
+vela diff --dir ./schemas/v2
+```
+
+## When schemas match
+
+If all local schemas match the remote, `vela diff` prints:
+
+```
+i Found 2 local schema(s) in ./vela/schemas
+✓ order.placed   → no change
+✓ payment.failed → no change
+
+i All schemas are in sync.
+```
+
+And exits with code `0`.
+
+## Difference from vela push
+
+`vela diff` is a read-only preview. `vela push` actually applies the changes. Running `vela diff` before `vela push` is a good habit — see the plan, then execute it.

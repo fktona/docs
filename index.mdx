@@ -1,6 +1,6 @@
 ---
 title: "Introduction"
-description: "Developer documentation for the Vela event intelligence platform"
+description: "Vela is an open-source event ingestion and notification platform. Send structured events from your backend, validate them against schemas, and get real-time alerts on Slack, Discord, Email, or webhooks."
 ---
 
 <img
@@ -16,51 +16,101 @@ description: "Developer documentation for the Vela event intelligence platform"
 
 ## What is Vela?
 
-Vela is an event intelligence platform that helps you ingest, validate, and route business events. Define schemas for your events, send them through the API, and set up notification rules to alert your team when things happen.
+Vela sits between your application and your team's alerting tools. You send structured events from your backend — Vela validates them, stores them, evaluates your notification rules, and delivers alerts to the right channels automatically.
 
-**Core concepts:**
+**The problem Vela solves:** Most teams duct-tape event tracking together with scattered log statements, hardcoded Slack messages, and cron jobs polling the database. When something breaks at 2am, there's no single place to look. Vela gives you that place.
 
-- **Apps** -- Isolated environments that own events, schemas, and rules
-- **Schemas** -- Define the shape and types of your event payloads
-- **Events** -- Structured data payloads that are validated and stored
-- **Notification Rules** -- Conditional alerts routed to Slack, Discord, or email
+## How it works
 
-## Choose your tool
+<Steps>
+  <Step title="Define your event schemas">
+    Describe the shape of events your application produces. Vela validates every incoming event against its schema — invalid data is rejected at the door before it can pollute your system.
+
+    ```json
+    {
+      "eventName": "order.placed",
+      "fields": [
+        { "id": "f1", "name": "orderId",     "type": "string", "required": true },
+        { "id": "f2", "name": "amountCents", "type": "number", "required": true }
+      ]
+    }
+    ```
+  </Step>
+
+  <Step title="Send events from your backend">
+    One SDK call. Vela handles validation, storage, and routing.
+
+    ```typescript
+    import { VelaIngestClient } from '@vela-event/sdk';
+
+    const vela = new VelaIngestClient(process.env.VELA_API_KEY);
+
+    await vela.ingest({
+      event: 'order.placed',
+      data: { orderId: 'ord_123', amountCents: 4999 },
+      level: 'info',
+    });
+    ```
+  </Step>
+
+  <Step title="Set up notification rules">
+    Define which events trigger alerts and where they go — no code changes needed. Rules are managed in the dashboard and can match on any payload field.
+
+    **Example:** *"When `payment.failed` arrives with `amountCents > 10000`, post to #alerts on Slack."*
+  </Step>
+</Steps>
+
+## Core concepts
+
+| Concept | Description |
+|---------|-------------|
+| **App** | An isolated workspace that owns schemas, events, and rules. One app per service or environment. |
+| **Schema** | Defines the fields an event must contain. Enforced at ingest time — invalid payloads are rejected with `400`. |
+| **Event** | A structured payload sent to Vela. Validated, stored, and routed through the rules engine. |
+| **Notification Rule** | A condition-based trigger. Fires when an event matches, then routes to a destination. |
+| **Destination** | Where alerts are sent — Slack, Discord, Email, or a custom webhook. |
+
+## Choose your integration
 
 <CardGroup cols={3}>
-
-<Card title="TypeScript SDK" icon="js" href="/sdks/typescript/overview">
-  Zero-dependency SDK for Node.js 18+ and modern browsers.
-</Card>
-
-<Card title="Python SDK" icon="python" href="/sdks/python/overview">
-  Sync and async support via httpx. Python 3.9+.
-</Card>
-
-<Card title="CLI" icon="terminal" href="/cli/overview">
-  Prisma-like schema management. Define schemas in files, push to Vela.
-</Card>
-
+  <Card title="TypeScript SDK" icon="js" href="/sdks/typescript/overview">
+    Zero-dependency client for Node.js 18+. Full TypeScript types. Works in browsers and edge runtimes.
+  </Card>
+  <Card title="Python SDK" icon="python" href="/sdks/python/overview">
+    Sync and async support via httpx. Python 3.9+. Fully typed.
+  </Card>
+  <Card title="CLI" icon="terminal" href="/cli/overview">
+    Manage schemas as JSON files, version-control them, push to Vela. Like Prisma for your events.
+  </Card>
 </CardGroup>
 
 ## Quick links
 
 <CardGroup cols={2}>
-
-<Card title="Quickstart" icon="rocket" href="/quickstart">
-  Send your first event in under 5 minutes.
-</Card>
-
-<Card title="API Reference" icon="code" href="/api-reference/introduction">
-  Full HTTP API documentation with examples.
-</Card>
-
-<Card title="Credentials" icon="key" href="/credentials/overview">
-  Understand client secrets and API keys.
-</Card>
-
-<Card title="Concepts" icon="lightbulb" href="/concepts">
-  Learn the Vela data model and how pieces fit together.
-</Card>
-
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Send your first event in under 5 minutes.
+  </Card>
+  <Card title="Core Concepts" icon="lightbulb" href="/concepts">
+    Understand apps, schemas, events, and rules in depth.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Full HTTP API docs with curl examples.
+  </Card>
+  <Card title="Credentials" icon="key" href="/credentials/overview">
+    Client secrets vs API keys — when to use each.
+  </Card>
 </CardGroup>
+
+## Self-hosting
+
+Vela is fully open source under AGPL-3.0. The only dependencies are PostgreSQL and RabbitMQ — both included in the Docker Compose file.
+
+```bash
+git clone https://github.com/vela-event/vela.git
+cd vela
+cp .env.sample .env
+docker compose -f docker-compose.infra.yml up -d
+pnpm install && pnpm migration:run && pnpm start:dev
+```
+
+API available at `http://localhost:3000`. Swagger docs at `http://localhost:3000/docs`.

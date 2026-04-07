@@ -1,35 +1,70 @@
 ---
 title: "Authentication"
-description: "How to authenticate with the Vela API"
+description: "How to authenticate with the Vela API — two credentials, two headers, and why they're separate."
+---
+
+## Two credentials
+
+Vela uses two different credentials, each with a different scope:
+
+| Credential | Format | Header | Scope |
+|------------|--------|--------|-------|
+| **Client secret** | `vela_cs_...` | `Authorization: Bearer` | Full account access — management operations |
+| **API key** | `vela_live_...` | `x-api-key` | Single app — event ingestion only |
+
+### Why two credentials?
+
+Your **API key** travels with every event your service ingests. It's in your production app, sent on every request. If it's ever leaked — a logged request, a misconfigured proxy, a developer's laptop — the worst case is that an attacker can ingest fake events into that one app. They can't read your data, modify schemas, delete apps, or touch anything else.
+
+Your **client secret** has full account access. It belongs only in server-side configuration, CI/CD secret stores, and the Vela CLI. It never touches your production event path.
+
 ---
 
 ## Client secret (Management API)
 
-For managing apps, schemas, and notification rules, pass your client secret as a Bearer token:
+Use a client secret for all management operations: creating apps, registering schemas, configuring notification rules, and reading events.
 
 ```bash
-curl https://api.vela.dev/v1/apps \
+curl https://api.velahq.xyz/v1/apps \
   -H "Authorization: Bearer vela_cs_your_secret_here"
 ```
 
+```bash
+# Create an app
+curl -X POST https://api.velahq.xyz/v1/apps \
+  -H "Authorization: Bearer vela_cs_your_secret_here" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "Order Service" }'
+```
+
+Client secrets are generated in **Settings → Client Secrets** in the dashboard. You can have multiple active secrets at the same time — useful for zero-downtime rotation.
+
+---
+
 ## API key (Event Ingestion)
 
-For ingesting events, pass your app's API key in the `x-api-key` header:
+Use an API key for `POST /v1/ingest`. Pass it in the `x-api-key` header — not `Authorization`.
 
 ```bash
-curl -X POST https://api.vela.dev/v1/ingest \
+curl -X POST https://api.velahq.xyz/v1/ingest \
   -H "x-api-key: vela_live_your_key_here" \
   -H "Content-Type: application/json" \
   -d '{
     "event": "order.placed",
-    "data": { "orderId": "ord_1", "amountCents": 4999 },
+    "data": { "orderId": "ord_abc123", "amountCents": 4999, "currency": "USD" },
     "level": "info"
   }'
 ```
 
+An API key is automatically generated when you create an app. It's shown once at creation time and once more when rotated. Vela stores only a hashed version — if you lose it, rotate it.
+
+---
+
 ## Error responses
 
-Missing or invalid credentials return `401 Unauthorized`:
+### Missing credentials — 401
+
+If the `Authorization` or `x-api-key` header is missing:
 
 ```json
 {
@@ -37,6 +72,69 @@ Missing or invalid credentials return `401 Unauthorized`:
   "timestamp": "2024-06-01T12:00:00.000Z",
   "path": "/v1/apps",
   "error": "Unauthorized",
-  "message": "Invalid or missing authentication"
+  "message": "Missing authentication credentials"
 }
 ```
+
+### Invalid credentials — 401
+
+If the token is present but invalid, expired, or revoked:
+
+```json
+{
+  "statusCode": 401,
+  "timestamp": "2024-06-01T12:00:00.000Z",
+  "path": "/v1/apps",
+  "error": "Unauthorized",
+  "message": "Invalid or expired credentials"
+}
+```
+
+### Wrong credential type — 403
+
+If you use an API key (`vela_live_...`) on a management endpoint, or a client secret on the ingest endpoint:
+
+```json
+{
+  "statusCode": 403,
+  "timestamp": "2024-06-01T12:00:00.000Z",
+  "path": "/v1/apps",
+  "error": "Forbidden",
+  "message": "API keys can only be used for event ingestion"
+}
+```
+
+---
+
+## Rotation
+
+### Rotating a client secret
+
+Client secrets support zero-downtime rotation because you can have multiple active secrets simultaneously:
+
+1. Generate a new secret in **Settings → Client Secrets**
+2. Update all services and CI/CD to use the new secret
+3. Deploy and verify everything is healthy
+4. Revoke the old secret
+
+### Rotating an API key
+
+API key rotation is instant and the old key is immediately invalidated:
+
+```bash
+curl -X POST https://api.velahq.xyz/v1/apps/order-service/rotate-key \
+  -H "Authorization: Bearer vela_cs_your_secret_here"
+```
+
+Response includes the new full API key — shown once only.
+
+---
+
+## Best practices
+
+- **Never hardcode credentials** in source code. Use environment variables.
+- **Never put credentials in URLs** as query parameters — they appear in logs.
+- **Separate credentials per environment** — use a different app (and different API key) for staging and production.
+- **Revoke immediately** if you suspect a credential is compromised.
+
+See the [credentials guide](/credentials/overview) for more details.

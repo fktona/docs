@@ -1,63 +1,159 @@
 ---
 title: "Ingest Client"
-description: "Send events to Vela with VelaIngestClient"
+description: "Send single and batch events to Vela with VelaIngestClient — full API reference with examples."
 ---
 
-The `VelaIngestClient` sends events to Vela. It authenticates with your app's **API key** (`vela_live_...`).
+`VelaIngestClient` sends events into your Vela app. It authenticates with your app's **API key** (`vela_live_...`), which is scoped to a single app and can only ingest events — it cannot read or modify any data.
 
 ## Constructor
 
 ```typescript
-import { VelaIngestClient } from '@vela/sdk';
+import { VelaIngestClient } from '@vela-event/sdk';
 
-const client = new VelaIngestClient(apiKey: string, options?: VelaClientOptions);
+const ingest = new VelaIngestClient(apiKey: string, options?: ClientOptions);
 ```
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `baseUrl` | `string` | `https://api.vela.dev` | API base URL |
-| `timeout` | `number` | `30000` | Request timeout in ms |
-| `fetchImpl` | `typeof fetch` | `globalThis.fetch` | Custom fetch implementation |
+| `baseUrl` | `string` | `https://api.velahq.xyz` | API base URL. Override for self-hosted instances. |
+| `timeout` | `number` | `30000` | Request timeout in milliseconds. |
+| `fetchImpl` | `typeof fetch` | `globalThis.fetch` | Custom fetch implementation (for Node 16 or testing). |
 
 ## Send a single event
 
 ```typescript
-const result = await client.ingest({
-  event: 'order.placed',       // required -- must match a registered schema
-  data: {                       // required -- payload validated against schema
+const result = await ingest.ingest({
+  event: 'order.placed',        // required — must match a registered schema's eventName
+  data: {                        // required — validated against the schema's fields
     orderId: 'ord_abc123',
     amountCents: 4999,
     currency: 'USD',
   },
-  level: 'info',                // required -- 'info' | 'warning' | 'error' | 'success'
-  customer_id: 'cust_42',       // optional
-  metadata: { env: 'prod' },    // optional
-  timestamp: '2024-06-01T12:00:00.000Z', // optional -- defaults to now
+  level: 'info',                 // required — 'info' | 'warning' | 'error' | 'success'
+  customer_id: 'cust_42',        // optional — link event to a customer for filtering
+  metadata: {                    // optional — extra context (not validated against schema fields)
+    environment: 'production',
+    traceId: 'abc-def-123',
+  },
+  timestamp: '2024-06-01T12:00:00.000Z', // optional — defaults to server ingest time
 });
 
-console.log(result.accepted);     // 1
-console.log(result.events[0].id); // UUID of the ingested event
+console.log(result.accepted);      // 1
+console.log(result.events[0].id);  // "evt_01j9abc..." — UUID of the stored event
+console.log(result.events[0].eventName); // "order.placed"
+console.log(result.events[0].createdAt); // ISO-8601 timestamp
 ```
+
+### Event fields reference
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `event` | yes | `string` | Event name. Must match a registered schema's `eventName`. Events without a matching schema are rejected with `400`. |
+| `data` | yes | `object` | Payload object. Validated against the schema's field definitions. |
+| `level` | yes | `string` | Severity level — see table below. |
+| `customer_id` | no | `string` | Identifier for the customer this event is associated with. Enables per-customer filtering in the dashboard. |
+| `metadata` | no | `object` | Contextual data (environment, trace ID, etc.). Validated against schema `metadataFields` if defined. |
+| `timestamp` | no | `string` | ISO-8601 timestamp for when the event occurred. Defaults to server ingest time if omitted. |
+
+### Event levels
+
+| Level | When to use | Examples |
+|-------|-------------|---------|
+| `info` | Normal business events | `order.placed`, `user.signed_up`, `session.started` |
+| `success` | Completed flows | `payment.captured`, `email.delivered`, `export.completed` |
+| `warning` | Degraded but non-critical | `retry.attempt`, `rate_limit_approaching`, `cache.miss` |
+| `error` | Failures requiring attention | `payment.failed`, `webhook.error`, `job.failed` |
 
 ## Send a batch
 
-Send up to 100 events in a single request:
+Send up to 100 events in a single request. This is more efficient than sending events one by one when you have multiple events to ingest at the same time.
 
 ```typescript
-const result = await client.ingest([
-  { event: 'order.placed',   data: { orderId: 'ord_1' }, level: 'info' },
-  { event: 'order.placed',   data: { orderId: 'ord_2' }, level: 'info' },
-  { event: 'payment.failed', data: { orderId: 'ord_3', reason: 'card_declined' }, level: 'error' },
+const result = await ingest.ingest([
+  {
+    event: 'order.placed',
+    data: { orderId: 'ord_1', amountCents: 1999, currency: 'USD' },
+    level: 'info',
+    customer_id: 'cust_1',
+  },
+  {
+    event: 'order.placed',
+    data: { orderId: 'ord_2', amountCents: 8500, currency: 'EUR' },
+    level: 'info',
+    customer_id: 'cust_2',
+  },
+  {
+    event: 'payment.failed',
+    data: { orderId: 'ord_3', reason: 'card_declined', amountCents: 3000 },
+    level: 'error',
+  },
 ]);
 
 console.log(result.accepted); // 3
+console.log(result.events);   // array of 3 ingested event objects
 ```
 
-## Event levels
+Batch requests follow the same validation rules as single requests. If any event fails validation, **only that event is rejected** — the rest are accepted normally.
 
-| Level | When to use |
-|-------|-------------|
-| `info` | Normal business events -- order placed, user signed up |
-| `success` | Completed flows -- payment captured, email delivered |
-| `warning` | Degraded but non-critical -- retry #2, slow response |
-| `error` | Failures requiring attention -- payment failed, webhook error |
+## Response shape
+
+Both single and batch ingestion return the same response type:
+
+```typescript
+interface IngestResponse {
+  accepted: number;     // Number of events successfully ingested
+  events: {
+    id: string;         // UUID of the stored event
+    eventName: string;  // The event name
+    createdAt: string;  // ISO-8601 timestamp of when it was stored
+  }[];
+}
+```
+
+## Error handling
+
+If validation fails, Vela returns a `400` error which the SDK throws as `VelaValidationError`:
+
+```typescript
+import { VelaValidationError, VelaAuthError } from '@vela-event/sdk';
+
+try {
+  await ingest.ingest({
+    event: 'order.placed',
+    data: { orderId: 'ord_1' }, // missing required field amountCents
+    level: 'info',
+  });
+} catch (err) {
+  if (err instanceof VelaValidationError) {
+    // Schema validation failed
+    console.error(err.message);
+    // "Event validation failed: field 'amountCents' is required"
+  } else if (err instanceof VelaAuthError) {
+    // Invalid or expired API key
+    console.error('Check your VELA_API_KEY');
+  }
+}
+```
+
+See [Error Handling](/sdks/typescript/error-handling) for the full error hierarchy.
+
+## Ingesting from a queue consumer
+
+A common pattern is to consume events from an internal queue and forward them to Vela:
+
+```typescript
+import { VelaIngestClient } from '@vela-event/sdk';
+
+const ingest = new VelaIngestClient(process.env.VELA_API_KEY!);
+
+// In your queue consumer
+async function processMessage(message: QueueMessage) {
+  await ingest.ingest({
+    event: message.type,
+    data: message.payload,
+    level: message.level ?? 'info',
+    customer_id: message.customerId,
+    timestamp: message.occurredAt,
+  });
+}
+```

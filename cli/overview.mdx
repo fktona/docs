@@ -1,61 +1,93 @@
 ---
 title: "Vela CLI"
-description: "Manage event schemas as code -- like Prisma for your events"
+description: "Manage event schemas as code — define them in JSON files, preview changes, and push to Vela. Like Prisma migrations, but for your event types."
 ---
 
-The `@vela/cli` package lets you define event schemas as local JSON files and sync them to the Vela API. No more manual API calls to register schemas.
+## Why schema-as-code?
 
-<img
-  src="/images/placeholder-cli-workflow.svg"
-  alt="CLI workflow diagram"
-/>
+Without the CLI, you register schemas by calling the API manually — once per environment, with no history. With the CLI, your schemas live as JSON files in your repository. They get reviewed in pull requests, deployed through CI/CD, and rolled back with `git revert`.
+
+Schema drift — where your code sends a field that no longer matches what Vela expects — becomes a build failure instead of a silent `400` at runtime.
 
 ## How it works
 
-1. **Define** schemas as JSON files in your project
-2. **Preview** changes with `vela diff`
-3. **Push** to create/update schemas on the Vela API
-4. **Pull** to download remote schemas as local files
+<Steps>
+  <Step title="Define schemas as JSON files">
+    Create one `.json` file per event type in `vela/schemas/`. Each file describes the event name, required fields, and validation rules.
 
-```bash
-# Define your schemas in vela/schemas/
-vela/schemas/
-  order.placed.json
-  order.cancelled.json
-  payment.failed.json
+    ```
+    vela/schemas/
+      order.placed.json
+      order.cancelled.json
+      payment.failed.json
+    ```
+  </Step>
+  <Step title="Preview changes with vela diff">
+    Before pushing anything, see exactly what would change — new schemas, updated fields, removed fields — without touching the remote API.
 
-# Preview what would change
-vela diff
+    ```bash
+    vela diff
+    # ! order.placed → update
+    #   + field "currency" (enum, required)
+    # ! order.cancelled → create
+    # ✓ payment.failed → no change
+    ```
+  </Step>
+  <Step title="Push to sync">
+    `vela push` creates or updates schemas that have changed. Unchanged schemas are skipped.
 
-# Push to Vela
-vela push
+    ```bash
+    vela push
+    # ✓ Created order.cancelled
+    # ✓ Updated order.placed
+    # i Created 1, Updated 1, Unchanged 1
+    ```
+  </Step>
+  <Step title="Pull to stay in sync">
+    If schemas were modified in the dashboard or by another team member, `vela pull` downloads them as local files so your repo stays current.
+
+    ```bash
+    vela pull
+    # ✓ Pulled order.placed
+    # ✓ Pulled payment.failed
+    ```
+  </Step>
+</Steps>
+
+## CI/CD integration
+
+Add `vela diff` as a check in your CI pipeline. It exits with code `1` when schemas are out of sync, failing the build before drift reaches production.
+
+```yaml
+# .github/workflows/ci.yml
+- name: Check schema drift
+  run: npx @vela-event/cli diff
+  env:
+    VELA_CLIENT_SECRET: ${{ secrets.VELA_CLIENT_SECRET }}
 ```
 
-## Why use the CLI?
+And push on deploy:
 
-- **Version control** -- schemas live in your repo, reviewed in PRs
-- **CI/CD** -- use `vela diff` as a gate to catch schema drift
-- **Team collaboration** -- everyone sees the same schema definitions
-- **Environment parity** -- push the same schemas to staging and production
+```yaml
+- name: Push schemas
+  run: npx @vela-event/cli push
+  env:
+    VELA_CLIENT_SECRET: ${{ secrets.VELA_CLIENT_SECRET }}
+```
 
 ## Quick links
 
 <CardGroup cols={2}>
-
-<Card title="Installation" icon="download" href="/cli/installation">
-  Install the CLI.
-</Card>
-
-<Card title="Push" icon="arrow-up" href="/cli/push">
-  Sync local schemas to remote.
-</Card>
-
-<Card title="Pull" icon="arrow-down" href="/cli/pull">
-  Download remote schemas to local files.
-</Card>
-
-<Card title="Diff" icon="code-compare" href="/cli/diff">
-  Preview changes without pushing.
-</Card>
-
+  <Card title="Installation" icon="download" href="/cli/installation">
+    Install the CLI globally or use it with npx.
+  </Card>
+  <Card title="Schema Format" icon="file-code" href="/cli/schema-format">
+    JSON schema file structure and field types.
+  </Card>
+  <Card title="vela diff" icon="code-compare" href="/cli/diff">
+    Preview changes before pushing.
+  </Card>
+  <Card title="vela push" icon="arrow-up" href="/cli/push">
+    Sync local schemas to remote.
+  </Card>
 </CardGroup>

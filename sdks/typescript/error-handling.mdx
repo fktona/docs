@@ -1,77 +1,165 @@
 ---
 title: "Error Handling"
-description: "Handle API errors with typed exceptions"
+description: "Handle API errors with typed exceptions — catch specific error classes, inspect status codes, and distinguish transport errors from API errors."
 ---
 
-All API errors extend `VelaError` and include structured metadata.
+The Vela SDK uses a typed error hierarchy rooted at `VelaError`. Every API error response is wrapped in a specific subclass so you can handle different failure modes independently.
 
-## Error classes
+## Error class hierarchy
 
-| Error class | HTTP status |
-|-------------|-------------|
-| `VelaValidationError` | 400 |
-| `VelaAuthError` | 401 |
-| `VelaForbiddenError` | 403 |
-| `VelaNotFoundError` | 404 |
-| `VelaRateLimitError` | 429 |
-| `VelaError` (base) | any other 4xx / 5xx |
+```
+VelaError (base)
+  ├── VelaValidationError   — 400 Bad Request
+  ├── VelaAuthError         — 401 Unauthorized
+  ├── VelaForbiddenError    — 403 Forbidden
+  ├── VelaNotFoundError     — 404 Not Found
+  └── VelaRateLimitError    — 429 Too Many Requests
+```
 
-## Usage
+Any other `4xx` or `5xx` response is thrown as the base `VelaError`.
+
+## Basic error handling
 
 ```typescript
 import {
   VelaError,
   VelaAuthError,
+  VelaForbiddenError,
   VelaNotFoundError,
   VelaValidationError,
   VelaRateLimitError,
-} from '@vela/sdk';
+} from '@vela-event/sdk';
 
 try {
-  await client.apps.get('nonexistent');
+  await client.apps.get('nonexistent-app');
 } catch (err) {
   if (err instanceof VelaNotFoundError) {
-    console.error('App not found');
+    console.error('App not found — check the slug');
   } else if (err instanceof VelaAuthError) {
     console.error('Invalid or missing client secret');
+  } else if (err instanceof VelaForbiddenError) {
+    console.error('This credential does not have access to this resource');
   } else if (err instanceof VelaValidationError) {
-    console.error('Validation error:', err.message);
+    console.error('Validation failed:', err.message);
   } else if (err instanceof VelaRateLimitError) {
-    console.error('Rate limited -- back off and retry');
+    console.error('Rate limited — slow down and retry');
   } else if (err instanceof VelaError) {
-    console.error(`API error ${err.statusCode}:`, err.message);
+    console.error(`Unexpected API error ${err.statusCode}:`, err.message);
   } else {
-    throw err; // network error, timeout, etc.
+    // Not a VelaError — network error, timeout, DNS failure, etc.
+    throw err;
   }
 }
 ```
 
 ## Error properties
 
-Every `VelaError` includes:
+Every `VelaError` instance includes:
 
 ```typescript
-interface VelaError {
-  message: string;      // Human-readable error message
-  statusCode: number;   // HTTP status code
-  error: string;        // Error type (e.g., "Not Found")
-  path: string;         // Request path that caused the error
-  timestamp: string;    // ISO-8601 timestamp
+class VelaError extends Error {
+  message: string;    // Human-readable error message from the API
+  statusCode: number; // HTTP status code (400, 401, 404, etc.)
+  error: string;      // Error type label, e.g. "Not Found", "Bad Request"
+  path: string;       // The request path that triggered the error
+  timestamp: string;  // ISO-8601 timestamp of when the error occurred
+}
+```
+
+Example:
+
+```typescript
+try {
+  await app.schemas.get('nonexistent.event');
+} catch (err) {
+  if (err instanceof VelaNotFoundError) {
+    console.log(err.message);    // "Schema not found"
+    console.log(err.statusCode); // 404
+    console.log(err.error);      // "Not Found"
+    console.log(err.path);       // "/v1/apps/order-service/schemas/nonexistent.event"
+    console.log(err.timestamp);  // "2024-06-01T12:00:00.000Z"
+  }
 }
 ```
 
 ## Network errors
 
-Network errors (DNS failure, timeout, connection refused) propagate as native `TypeError` or `DOMException` -- not wrapped in `VelaError`. This lets you distinguish transport failures from API errors:
+Network errors — DNS failures, connection timeouts, connection refused — are **not** wrapped in `VelaError`. They propagate as native `TypeError` or `DOMException`. This distinction lets you handle transport failures separately from API errors:
 
 ```typescript
 try {
-  await client.apps.list();
+  await ingest.ingest({ event: 'order.placed', data: {}, level: 'info' });
 } catch (err) {
   if (err instanceof VelaError) {
-    // API returned an error response
+    // API responded with an error status code
+    console.error('API error:', err.statusCode, err.message);
+  } else if (err instanceof TypeError) {
+    // Network failure — DNS, connection refused, fetch itself threw
+    console.error('Network error:', err.message);
   } else {
-    // Network issue -- DNS, timeout, connection refused
+    // Something else unexpected
+    throw err;
   }
 }
+```
+
+## Handling validation errors on ingestion
+
+When an event fails schema validation, Vela returns a `400` with a specific message describing which field failed:
+
+```typescript
+import { VelaValidationError } from '@vela-event/sdk';
+
+try {
+  await ingest.ingest({
+    event: 'order.placed',
+    data: { orderId: 'ord_1' }, // missing required field: amountCents
+    level: 'info',
+  });
+} catch (err) {
+  if (err instanceof VelaValidationError) {
+    console.error(err.message);
+    // "Event validation failed: field 'amountCents' is required"
+  }
+}
+```
+
+## Rate limit handling
+
+When you hit a rate limit (`429`), implement exponential backoff before retrying:
+
+```typescript
+import { VelaRateLimitError } from '@vela-event/sdk';
+
+async function ingestWithRetry(payload: IngestPayload, maxRetries = 3) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await ingest.ingest(payload);
+    } catch (err) {
+      if (err instanceof VelaRateLimitError && attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+        console.warn(`Rate limited — retrying in ${delay}ms`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+```
+
+## Auth errors
+
+| Error | When it happens | Fix |
+|-------|----------------|-----|
+| `VelaAuthError` (401) | Missing credentials, expired or revoked key/secret | Check `VELA_API_KEY` or `VELA_CLIENT_SECRET` |
+| `VelaForbiddenError` (403) | Valid credentials, wrong scope — e.g. using an API key on a management endpoint | Use the correct credential for the operation |
+
+```typescript
+// Common mistake: using API key (vela_live_...) for management operations
+// This throws VelaForbiddenError
+
+const wrongClient = new VelaManagementClient(process.env.VELA_API_KEY!);
+// Fix: use VELA_CLIENT_SECRET instead
+const correctClient = new VelaManagementClient(process.env.VELA_CLIENT_SECRET!);
 ```

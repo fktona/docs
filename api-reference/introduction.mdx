@@ -1,68 +1,135 @@
 ---
 title: "API Reference"
-description: "Vela HTTP API documentation"
+description: "Vela HTTP API — base URL, authentication, request format, error handling, and endpoint overview."
 ---
 
 ## Base URL
 
 ```
-https://api.vela.dev/v1
+https://api.velahq.xyz/v1
 ```
 
-For local development:
+For local development (default port):
 
 ```
 http://localhost:3000/v1
 ```
 
+All endpoints are prefixed with `/v1`.
+
 ## Authentication
 
-The API uses two authentication methods:
+Vela uses two different credentials depending on the operation:
 
-| Method | Header | Used for |
-|--------|--------|----------|
-| Client secret | `Authorization: Bearer vela_cs_...` | Management endpoints (apps, schemas, rules) |
-| API key | `x-api-key: vela_live_...` | Event ingestion |
+| Credential | Header | Used for |
+|------------|--------|----------|
+| **Client secret** (`vela_cs_...`) | `Authorization: Bearer <secret>` | All management endpoints — apps, schemas, notification rules, events (read) |
+| **API key** (`vela_live_...`) | `x-api-key: <key>` | Event ingestion only (`POST /v1/ingest`) |
 
-See [Authentication](/api-reference/authentication) for details.
+```bash
+# Management endpoint — use Authorization header with client secret
+curl https://api.velahq.xyz/v1/apps \
+  -H "Authorization: Bearer vela_cs_your_secret_here"
 
-## Content type
+# Ingest endpoint — use x-api-key header
+curl -X POST https://api.velahq.xyz/v1/ingest \
+  -H "x-api-key: vela_live_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{ "event": "order.placed", "data": { "orderId": "ord_1" }, "level": "info" }'
+```
 
-All requests and responses use JSON:
+See [Authentication](/api-reference/authentication) for a full explanation of the two-credential model.
+
+## Request format
+
+All request bodies must be JSON. Set the `Content-Type` header on every `POST`, `PUT`, and `PATCH` request:
 
 ```
 Content-Type: application/json
 ```
 
-## Error format
+## Response format
 
-All errors return a consistent shape:
+All responses are JSON. Successful responses return `200` or `201` with the requested data. Error responses return a consistent error object.
+
+### Success example
+
+```json
+{
+  "id": "app-uuid",
+  "name": "Order Service",
+  "slug": "order-service",
+  "apiKeyHint": "vela_live_abc1...",
+  "createdAt": "2024-06-01T12:00:00.000Z"
+}
+```
+
+### Error format
 
 ```json
 {
   "statusCode": 400,
   "timestamp": "2024-06-01T12:00:00.000Z",
-  "path": "/v1/apps",
+  "path": "/v1/apps/order-service/schemas",
   "error": "Bad Request",
-  "message": "name must be a string"
+  "message": "eventName must be a non-empty string"
 }
 ```
 
+## Status codes
+
 | Status | Description |
 |--------|-------------|
-| `400` | Validation error -- check your request body |
-| `401` | Unauthorized -- missing or invalid credentials |
-| `403` | Forbidden -- valid credentials but insufficient permissions |
-| `404` | Not found |
-| `429` | Rate limited -- back off and retry |
-| `500` | Internal server error |
+| `200` | Success — resource returned or updated |
+| `201` | Created — new resource was created |
+| `204` | No content — deletion succeeded |
+| `400` | Bad request — validation error, check `message` for details |
+| `401` | Unauthorized — credentials missing or invalid |
+| `403` | Forbidden — credentials valid but insufficient for this operation |
+| `404` | Not found — resource does not exist |
+| `429` | Rate limited — slow down and retry with backoff |
+| `500` | Internal server error — unexpected failure on our end |
 
 ## Endpoints overview
 
-| Group | Base path | Auth |
-|-------|-----------|------|
+| Resource | Base path | Auth required |
+|----------|-----------|--------------|
 | [Apps](/api-reference/apps/list) | `/v1/apps` | Client secret |
 | [Schemas](/api-reference/schemas/list) | `/v1/apps/:appId/schemas` | Client secret |
-| [Events](/api-reference/events/ingest) | `/v1/ingest` | API key |
+| [Ingest](/api-reference/events/ingest) | `/v1/ingest` | API key |
 | [Events (read)](/api-reference/events/list) | `/v1/apps/:appId/events` | Client secret |
 | [Notification Rules](/api-reference/notification-rules/list) | `/v1/apps/:appId/notification-rules` | Client secret |
+
+## Pagination
+
+List endpoints return arrays directly. When the response is large, pass `limit` and `offset` query parameters:
+
+```bash
+# First 50 events
+GET /v1/apps/order-service/events?limit=50&offset=0
+
+# Next 50
+GET /v1/apps/order-service/events?limit=50&offset=50
+```
+
+## Rate limits
+
+The API is rate-limited per account. If you exceed the limit, you receive a `429 Too Many Requests` response. Implement exponential backoff before retrying:
+
+- Wait 1 second after the first `429`
+- Wait 2 seconds after the second
+- Wait 4 seconds after the third
+- And so on up to a reasonable maximum
+
+## SDKs
+
+If you're using TypeScript or Python, use the SDK instead of calling the API directly — it handles authentication, serialization, and typed errors automatically:
+
+<CardGroup cols={2}>
+  <Card title="TypeScript SDK" icon="js" href="/sdks/typescript/overview">
+    `@vela-event/sdk` — type-safe clients for Node.js and browsers.
+  </Card>
+  <Card title="Python SDK" icon="python" href="/sdks/python/overview">
+    `vela-sdk` — sync and async clients for Python 3.9+.
+  </Card>
+</CardGroup>

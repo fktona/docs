@@ -1,6 +1,6 @@
 ---
 title: "Installation"
-description: "Install the @vela/sdk package"
+description: "Install the @vela-event/sdk package, set up credentials, and verify your connection."
 ---
 
 ## Install
@@ -8,28 +8,41 @@ description: "Install the @vela/sdk package"
 <CodeGroup>
 
 ```bash npm
-npm install @vela/sdk
+npm install @vela-event/sdk
 ```
 
 ```bash pnpm
-pnpm add @vela/sdk
+pnpm add @vela-event/sdk
 ```
 
 ```bash yarn
-yarn add @vela/sdk
+yarn add @vela-event/sdk
 ```
 
 </CodeGroup>
 
 ## Requirements
 
-- **Node.js 18+** (uses native `fetch`)
-- Works in all modern browsers
-- Compatible with edge runtimes (Cloudflare Workers, Vercel Edge, Deno)
+- **Node.js 18+** — the SDK uses the native `fetch` API added in Node 18
+- Works in all modern browsers (Chrome 95+, Firefox 90+, Safari 15+)
+- Compatible with edge runtimes: Cloudflare Workers, Vercel Edge Functions, Deno
+
+If you need to use the SDK in Node.js 16 or earlier, pass a custom `fetch` implementation via the `fetchImpl` option:
+
+```typescript
+import nodeFetch from 'node-fetch';
+import { VelaIngestClient } from '@vela-event/sdk';
+
+const ingest = new VelaIngestClient(process.env.VELA_API_KEY!, {
+  fetchImpl: nodeFetch as unknown as typeof fetch,
+});
+```
 
 ## Set up credentials
 
-```bash
+<CodeGroup>
+
+```bash Environment variables
 # For management operations (apps, schemas, rules)
 export VELA_CLIENT_SECRET="vela_cs_..."
 
@@ -37,16 +50,76 @@ export VELA_CLIENT_SECRET="vela_cs_..."
 export VELA_API_KEY="vela_live_..."
 ```
 
-<Tip>
-  Get both credentials from the [Vela dashboard](https://app.vela.dev). See the [credentials guide](/credentials/overview) for details.
-</Tip>
+```bash .env file
+# .env — add this to .gitignore
+VELA_CLIENT_SECRET=vela_cs_...
+VELA_API_KEY=vela_live_...
+```
 
-## Verify the installation
+</CodeGroup>
+
+See the [credentials guide](/credentials/overview) for how to generate these values. Client secrets come from **Settings → Client Secrets** in the dashboard. API keys are generated when you create an app.
+
+## Verify your setup
+
+Run this to confirm the SDK can connect and your credentials are valid:
 
 ```typescript
-import { VelaManagementClient } from '@vela/sdk';
+import { VelaManagementClient } from '@vela-event/sdk';
 
-const client = new VelaManagementClient(process.env.VELA_CLIENT_SECRET);
-const apps = await client.apps.list();
-console.log(`Connected! Found ${apps.length} app(s).`);
+const client = new VelaManagementClient(process.env.VELA_CLIENT_SECRET!);
+
+try {
+  const apps = await client.apps.list();
+  console.log(`Connected! ${apps.length} app(s) found.`);
+} catch (err) {
+  console.error('Connection failed:', err.message);
+}
+```
+
+If you see `Connected! N app(s) found.`, you're ready.
+
+## Self-hosted setup
+
+If you're running Vela on your own infrastructure, pass the `baseUrl` option pointing to your instance:
+
+```typescript
+import { VelaIngestClient, VelaManagementClient } from '@vela-event/sdk';
+
+const ingest = new VelaIngestClient(process.env.VELA_API_KEY!, {
+  baseUrl: 'https://vela.your-domain.com',
+});
+
+const client = new VelaManagementClient(process.env.VELA_CLIENT_SECRET!, {
+  baseUrl: 'https://vela.your-domain.com',
+});
+```
+
+## TypeScript configuration
+
+The SDK ships with full type declarations. No `@types` package is needed.
+
+Recommended `tsconfig.json` settings:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true
+  }
+}
+```
+
+For CommonJS projects:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2019",
+    "module": "CommonJS",
+    "strict": true
+  }
+}
 ```
