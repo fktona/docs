@@ -184,12 +184,12 @@
       "anchors": [
         {
           "anchor": "GitHub",
-          "href": "https://github.com/vela-dev",
+          "href": "https://github.com/Vela-Events/vela",
           "icon": "github"
         },
         {
           "anchor": "Dashboard",
-          "href": "https://app.vela.dev",
+          "href": "https://app.velahq.xyz",
           "icon": "gauge"
         }
       ]
